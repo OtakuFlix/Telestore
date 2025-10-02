@@ -1,6 +1,6 @@
 # ==================== bot/handlers/callbacks.py ====================
 from pyrogram import filters
-from pyrogram.types import CallbackQuery, Message
+from pyrogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
 from bot.client import bot
 from bot.keyboards import (
     main_menu_kb, folders_kb, folder_view_kb, 
@@ -25,14 +25,14 @@ async def main_menu_callback(client, callback: CallbackQuery):
     )
     await callback.answer()
 
-@bot.on_callback_query(filters.regex("^folders:(\d+)$"))
+@bot.on_callback_query(filters.regex(r"^folders:(\d+)$"))
 async def folders_callback(client, callback: CallbackQuery):
     """Handle folders list callback"""
     page = int(callback.data.split(":")[1])
     await show_folders_page(callback.message, page, edit=True)
     await callback.answer()
 
-@bot.on_callback_query(filters.regex("^folder:([^:]+):(\d+)$"))
+@bot.on_callback_query(filters.regex(r"^folder:([^:]+):(\d+)$"))
 async def folder_view_callback(client, callback: CallbackQuery):
     """Handle folder view callback"""
     parts = callback.data.split(":")

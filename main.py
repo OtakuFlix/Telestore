@@ -3,20 +3,30 @@ import asyncio
 from contextlib import asynccontextmanager
 from api.app import app
 from bot.client import bot
+from database.connection import connect_db, disconnect_db
 from config import config
 
 @asynccontextmanager
 async def lifespan(application):
-    """Manage bot and API lifecycle"""
-    print(f"[STARTUP] Starting Telegram bot and API server on port {config.PORT}...")
+    """Manage bot, database and API lifecycle"""
+    print(f"[STARTUP] Initializing TeleStore Bot...")
+    
+    # Connect to database
+    await connect_db()
+    
+    # Start Telegram bot
     await bot.start()
-    print(f"[STARTUP] Bot started successfully: @{(await bot.get_me()).username}")
+    print(f"[STARTUP] Bot started: @{(await bot.get_me()).username}")
+    print(f"[STARTUP] API server running on port {config.PORT}")
+    print(f"[STARTUP] Base URL: {config.BASE_APP_URL}")
     
     yield
     
-    print("[SHUTDOWN] Stopping bot...")
+    # Cleanup
+    print("[SHUTDOWN] Stopping services...")
     await bot.stop()
-    print("[SHUTDOWN] Bot stopped")
+    await disconnect_db()
+    print("[SHUTDOWN] Shutdown complete")
 
 app.router.lifespan_context = lifespan
 
