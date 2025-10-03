@@ -25,7 +25,7 @@ class Config:
         return Config(
             API_ID=int(os.getenv("API_ID", 25198711)),  # fallback default
             API_HASH=os.getenv("API_HASH", "2a99a1375e26295626c04b4606f72752"),
-            BOT_TOKEN=os.getenv("BOT_TOKEN", "7393513769:AAHlyw_YtILKbrMnAPJ5L7nnwPn8bhlc54Y"),
+            BOT_TOKEN=os.getenv("BOT_TOKEN", "6979155513:AAHw4CHmjHa-_NlmEC2wHgvJtl80x3LRU-U"),
             MONGODB_URI=os.getenv("MONGODB_URI", "mongodb+srv://mhsm:mhsm@cluster0.j9figvh.mongodb.net/?retryWrites=true&w=majority"),
             MONGODB_DB=os.getenv("MONGODB_DB", "telestore"),
             BASE_APP_URL=os.getenv("BASE_APP_URL", "http://localhost:8000"),

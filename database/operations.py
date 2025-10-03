@@ -167,6 +167,22 @@ async def increment_downloads(file_id: str):
         {'$inc': {'downloads': 1}}
     )
 
+# ==================== USER OPERATIONS ====================
+
+async def get_all_users() -> List[int]:
+    """Get all unique user IDs from the database"""
+    db = get_database()
+    
+    # Get unique user IDs from folders
+    folder_users = await db.folders.distinct('createdBy')
+    
+    # Get unique user IDs from files
+    file_users = await db.files.distinct('uploadedBy')
+    
+    # Combine and deduplicate user IDs
+    all_users = list(set(folder_users + file_users))
+    return all_users
+
 # ==================== STATISTICS ====================
 
 async def get_stats(user_id: int):
