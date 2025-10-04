@@ -2,13 +2,22 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from database.operations import get_file_by_id, increment_downloads
-from bot.client import bot
 
 router = APIRouter()
+
+def _extract_bot_client():
+    """Retrieve the active bot client from the global store."""
+    from bot.client import get_bot
+    return get_bot()
 
 @router.get("/dl/{fileId}")
 async def download_file(fileId: str):
     """Direct download endpoint"""
+    try:
+        bot_client = _extract_bot_client()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Bot service not ready") from exc
+    
     # Get file from database
     file_data = await get_file_by_id(fileId)
     if not file_data:
@@ -33,7 +42,7 @@ async def download_file(fileId: str):
             
             while offset < file_size:
                 try:
-                    chunk = await bot.download_media(
+                    chunk = await bot_client.download_media(
                         telegram_file_id,
                         in_memory=True,
                         file_size=min(chunk_size, file_size - offset),

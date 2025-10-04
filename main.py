@@ -3,30 +3,41 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pyrogram import idle
+from pyrogram import Client, idle
+from bot.client import set_bot
 from database.connection import connect_db, disconnect_db
 from config import config
 
-# Import bot client
-from bot.client import bot
-
-# Global variables
+# Global bot variable
+bot = None
 idle_task = None
 
+# ---------------------- LIFESPAN ----------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage bot, database and API lifecycle"""
-    global idle_task
-    
-    print(f"[STARTUP] Initializing TeleStore Bot...")
+    """Manage bot, database, and API lifecycle"""
+    global bot, idle_task
+
+    print("[STARTUP] Initializing TeleStore Bot...")
     
     # Connect to database
     await connect_db()
+    print("[DATABASE] Connected successfully")
     
-    # Import handlers to register them (this must happen BEFORE bot.start())
-    print(f"[STARTUP] Registering handlers...")
-    from bot.handlers import commands, callbacks, media
-    print(f"[STARTUP] Handlers registered")
+    # Create bot client
+    bot = Client(
+        name="telestore_bot",
+        api_id=config.API_ID,
+        api_hash=config.API_HASH,
+        bot_token=config.BOT_TOKEN,
+        workdir="."
+    )
+    set_bot(bot)
+    print("[STARTUP] Bot client created")
+    
+    # Register all handlers
+    register_handlers(bot)
+    print("[STARTUP] Handlers registered")
     
     # Start bot
     await bot.start()
@@ -37,10 +48,10 @@ async def lifespan(app: FastAPI):
     
     # Run idle in background to keep bot polling
     idle_task = asyncio.create_task(idle())
-    print(f"[STARTUP] Bot is now listening for messages...")
-    
+    print("[STARTUP] Bot is now listening for messages...")
+
     yield
-    
+
     # Cleanup
     print("[SHUTDOWN] Stopping services...")
     if idle_task:
@@ -53,7 +64,23 @@ async def lifespan(app: FastAPI):
     await disconnect_db()
     print("[SHUTDOWN] Shutdown complete")
 
-# Create FastAPI app
+# ---------------------- HANDLER REGISTRATION ----------------------
+def register_handlers(bot_instance):
+    """Register all modular bot handlers"""
+    from bot.handlers import commands, media, callbacks
+
+    # Register command handlers
+    commands.register_command_handlers(bot_instance)
+    
+    # Register media handlers
+    media.register_media_handlers(bot_instance)
+    
+    # Register callback handlers
+    callbacks.register_callback_handlers(bot_instance)
+
+    print("[HANDLERS] All handlers successfully registered")
+
+# ---------------------- FASTAPI APP ----------------------
 app = FastAPI(
     title="TeleStore API",
     description="Stream and download files from Telegram",
@@ -70,11 +97,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routes
+# Include API routes
 from api.routes import stream, download
 app.include_router(stream.router)
 app.include_router(download.router)
 
+# Root endpoint
 @app.get("/")
 async def root():
     return {
@@ -88,10 +116,12 @@ async def root():
         }
     }
 
+# Health check
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
+# ---------------------- ENTRY POINT ----------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=config.PORT, log_level="info")

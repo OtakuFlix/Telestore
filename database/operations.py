@@ -2,6 +2,7 @@
 from database.connection import get_database
 from datetime import datetime
 from typing import List, Optional
+from pymongo.errors import DuplicateKeyError
 
 # ==================== FOLDER OPERATIONS ====================
 
@@ -92,7 +93,26 @@ async def add_file_to_folder(file_data: dict, uploaded_by: int):
     file_data['views'] = 0
     file_data['downloads'] = 0
     
-    result = await db.files.insert_one(file_data)
+    # Allow same Telegram file in different folders but prevent duplicates within the same folder
+    existing = await db.files.find_one({
+        '$or': [
+            {
+                'telegramFileId': file_data['telegramFileId'],
+                'folderId': file_data['folderId']
+            },
+            {
+                'telegramFileUniqueId': file_data.get('telegramFileUniqueId'),
+                'folderId': file_data['folderId']
+            }
+        ]
+    })
+    if existing:
+        return False
+    
+    try:
+        result = await db.files.insert_one(file_data)
+    except DuplicateKeyError:
+        return False
     
     # Increment folder file count
     if result.inserted_id:
