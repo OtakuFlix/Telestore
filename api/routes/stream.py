@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse, HTMLResponse
-from database.operations import get_file_by_id, increment_views
+from database.operations import get_file_by_id, increment_views, get_files_by_basename
 from bot.client import get_bot
 from config import config
 from pyrogram import raw
@@ -12,10 +12,7 @@ import math
 
 router = APIRouter()
 
-# Unified ArtPlayer Configuration Function
-def get_artplayer_config(stream_url: str, file_name: str, is_mkv: bool, download_url: str = None, is_embed: bool = False):
-    """Returns unified ArtPlayer configuration for both watch and embed pages"""
-    
+def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: str, is_mkv: bool, download_url: str = None, current_quality: str = "Unknown"):
     controls_config = """[
         {
             position: 'left',
@@ -75,7 +72,7 @@ def get_artplayer_config(stream_url: str, file_name: str, is_mkv: bool, download
             url: '{stream_url}',
             title: '{file_name}',
             volume: 0.8,
-            autoplay: {str(is_embed).lower()},
+            autoplay: false,
             pip: true,
             fullscreen: true,
             fullscreenWeb: true,
@@ -95,103 +92,144 @@ def get_artplayer_config(stream_url: str, file_name: str, is_mkv: bool, download
                 preload: 'metadata',
             }},
             {mkv_custom_type}
-            settings: [
-                {{
-                    html: 'Multi Audio',
-                    icon: '<i class="fas fa-headphones"></i>',
-                    switch: false,
-                    onSwitch: function(item) {{
-                        const streamUrl = '{download_url}';
-                        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-                        if (isMobile) {{
-                            alert('You are being redirected to VLC Player on your mobile device.\\n\\n' +
-                                  'Once VLC opens, you can adjust audio tracks and subtitles directly in the app.');
-                            window.location.href = 'vlc://' + streamUrl;
-                        }} else {{
-                            alert('VLC Player is available for desktop, but your browser cannot open it directly.\\n\\n' +
-                                  'Please follow these steps:\\n\\n' +
-                                  '1. Copy the link below:\\n' +
-                                  streamUrl + '\\n\\n' +
-                                  '2. Open VLC → Media → Open Network Stream.\\n' +
-                                  '3. Paste the URL and click Play.\\n\\n' +
-                                  'You can now switch audio and subtitle tracks in VLC.');
-                            window.open(streamUrl, '_blank');
-                        }}
-
-                        return !item.switch;
-                    }}
-                }},
-
-                {{
-                    html: 'Playback Speed',
-                    icon: '<i class="fas fa-gauge-high"></i>',
-                    selector: [
-                        {{ html: '0.25x', value: 0.25 }},
-                        {{ html: '0.5x', value: 0.5 }},
-                        {{ html: '0.75x', value: 0.75 }},
-                        {{ html: 'Normal', value: 1, default: true }},
-                        {{ html: '1.25x', value: 1.25 }},
-                        {{ html: '1.5x', value: 1.5 }},
-                        {{ html: '1.75x', value: 1.75 }},
-                        {{ html: '2x', value: 2 }},
-                    ],
-                    onSelect: function (item) {{
-                        art.playbackRate = item.value;
-                        art.notice.show = '<i class="fas fa-gauge-high"></i> Speed: ' + item.html;
-                        return item.html;
-                    }},
-                }},
-                {{
-                    html: 'Aspect Ratio',
-                    icon: '<i class="fas fa-expand"></i>',
-                    selector: [
-                        {{ html: 'Default', value: 'default', default: true }},
-                        {{ html: '16:9', value: '16:9' }},
-                        {{ html: '4:3', value: '4:3' }},
-                        {{ html: '21:9', value: '21:9' }},
-                        {{ html: '2.35:1', value: '2.35:1' }},
-                    ],
-                    onSelect: function (item) {{
-                        art.aspectRatio = item.value;
-                        art.notice.show = '<i class="fas fa-expand"></i> Aspect: ' + item.html;
-                        return item.html;
-                    }},
-                }},
-                {{
-                    html: 'Loop Playback',
-                    icon: '<i class="fas fa-repeat"></i>',
-                    switch: false,
-                    onSwitch: function (item) {{
-                        art.loop = !art.loop;
-                        item.tooltip = art.loop ? 'Loop: On' : 'Loop: Off';
-                        art.notice.show = art.loop ? '<i class="fas fa-check"></i> Loop enabled' : '<i class="fas fa-times"></i> Loop disabled';
-                        return !item.switch;
-                    }},
-                }},
-            ],
+            settings: [],
             controls: {controls_config},
+        }});
+
+        async function fetchQualityOptions() {{
+            try {{
+                const response = await fetch('/api/quality_info/{file_id}');
+                const data = await response.json();
+                return data.qualities || [];
+            }} catch (error) {{
+                console.error('Failed to fetch quality options:', error);
+                return [];
+            }}
+        }}
+
+        fetchQualityOptions().then(qualities => {{
+            if (qualities.length > 1) {{
+                const qualityOptions = qualities.map(q => {{
+                    const sizeMB = (q.size / (1024 * 1024)).toFixed(1);
+                    return {{
+                        html: `${{q.quality}} (${{sizeMB}}MB)`,
+                        value: q.fileId,
+                        url: `{config.BASE_APP_URL}/${{q.fileId}}`,
+                        quality: q.quality,
+                        default: q.quality === '{current_quality}'
+                    }};
+                }});
+
+                art.setting.add({{
+                    html: 'Quality',
+                    icon: '<i class="fas fa-sliders"></i>',
+                    selector: qualityOptions,
+                    onSelect: function (item) {{
+                        const currentTime = art.currentTime;
+                        const wasPlaying = !art.paused;
+                        
+                        art.switchUrl(item.url);
+                        
+                        art.once('video:canplay', () => {{
+                            art.currentTime = currentTime;
+                            if (wasPlaying) {{
+                                art.play();
+                            }}
+                        }});
+                        
+                        art.notice.show = `<i class="fas fa-sliders"></i> Switched to ${{item.quality}}`;
+                        
+                        window.history.replaceState(null, '', `/watch/${{item.value}}`);
+                        
+                        return item.html;
+                    }},
+                }});
+            }}
+
+            art.setting.add({{
+                html: 'Multi Audio',
+                icon: '<i class="fas fa-headphones"></i>',
+                switch: false,
+                onSwitch: function(item) {{
+                    const streamUrl = '{download_url}';
+                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+                    if (isMobile) {{
+                        alert('You are being redirected to VLC Player on your mobile device.\\n\\nOnce VLC opens, you can adjust audio tracks and subtitles directly in the app.');
+                        window.location.href = 'vlc://' + streamUrl;
+                    }} else {{
+                        alert('VLC Player is available for desktop, but your browser cannot open it directly.\\n\\nPlease follow these steps:\\n\\n1. Copy the link below:\\n' + streamUrl + '\\n\\n2. Open VLC → Media → Open Network Stream.\\n3. Paste the URL and click Play.\\n\\nYou can now switch audio and subtitle tracks in VLC.');
+                        window.open(streamUrl, '_blank');
+                    }}
+
+                    return !item.switch;
+                }}
+            }});
+
+            art.setting.add({{
+                html: 'Playback Speed',
+                icon: '<i class="fas fa-gauge-high"></i>',
+                selector: [
+                    {{ html: '0.25x', value: 0.25 }},
+                    {{ html: '0.5x', value: 0.5 }},
+                    {{ html: '0.75x', value: 0.75 }},
+                    {{ html: 'Normal', value: 1, default: true }},
+                    {{ html: '1.25x', value: 1.25 }},
+                    {{ html: '1.5x', value: 1.5 }},
+                    {{ html: '1.75x', value: 1.75 }},
+                    {{ html: '2x', value: 2 }},
+                ],
+                onSelect: function (item) {{
+                    art.playbackRate = item.value;
+                    art.notice.show = '<i class="fas fa-gauge-high"></i> Speed: ' + item.html;
+                    return item.html;
+                }},
+            }});
+
+            art.setting.add({{
+                html: 'Aspect Ratio',
+                icon: '<i class="fas fa-expand"></i>',
+                selector: [
+                    {{ html: 'Default', value: 'default', default: true }},
+                    {{ html: '16:9', value: '16:9' }},
+                    {{ html: '4:3', value: '4:3' }},
+                    {{ html: '21:9', value: '21:9' }},
+                    {{ html: '2.35:1', value: '2.35:1' }},
+                ],
+                onSelect: function (item) {{
+                    art.aspectRatio = item.value;
+                    art.notice.show = '<i class="fas fa-expand"></i> Aspect: ' + item.html;
+                    return item.html;
+                }},
+            }});
+
+            art.setting.add({{
+                html: 'Loop Playback',
+                icon: '<i class="fas fa-repeat"></i>',
+                switch: false,
+                onSwitch: function (item) {{
+                    art.loop = !art.loop;
+                    item.tooltip = art.loop ? 'Loop: On' : 'Loop: Off';
+                    art.notice.show = art.loop ? '<i class="fas fa-check"></i> Loop enabled' : '<i class="fas fa-times"></i> Loop disabled';
+                    return !item.switch;
+                }},
+            }});
         }});
     """
 
-def get_tap_functionality_script(is_embed: bool = False):
-    """Returns unified tap detection and keyboard controls"""
-    container_selector = "'#artplayer'" if is_embed else "'.player-wrapper'"
-    
-    return f"""
-        // Disable ArtPlayer's default click behavior
-        art.on('ready', () => {{
+def get_tap_functionality_script():
+    return """
+        art.on('ready', () => {
             art.template.$video.style.pointerEvents = 'none';
-        }});
+        });
         
-        // Custom tap functionality
         let tapCount = 0;
         let tapTimer = null;
         let lastTapTime = 0;
         
-        const videoContainer = document.querySelector({container_selector});
+        const videoContainer = document.querySelector('.player-wrapper');
         
-        const createSeekIndicator = (direction, x, y) => {{
+        const createSeekIndicator = (direction, x, y) => {
             const indicator = document.createElement('div');
             indicator.className = 'seek-indicator';
             indicator.innerHTML = direction === 'forward' 
@@ -202,9 +240,9 @@ def get_tap_functionality_script(is_embed: bool = False):
             videoContainer.appendChild(indicator);
             
             setTimeout(() => indicator.remove(), 800);
-        }};
+        };
         
-        const createFullscreenIndicator = (x, y) => {{
+        const createFullscreenIndicator = (x, y) => {
             const indicator = document.createElement('div');
             indicator.className = 'seek-indicator';
             indicator.innerHTML = '<i class="fas fa-expand"></i><span>Fullscreen</span>';
@@ -213,9 +251,9 @@ def get_tap_functionality_script(is_embed: bool = False):
             videoContainer.appendChild(indicator);
             
             setTimeout(() => indicator.remove(), 800);
-        }};
+        };
         
-        videoContainer.addEventListener('click', (e) => {{
+        videoContainer.addEventListener('click', (e) => {
             if (e.target.closest('.art-controls') || e.target.closest('.art-layers') || 
                 e.target.closest('.art-control') || e.target.closest('.art-icon') || 
                 e.target.closest('button')) return;
@@ -230,61 +268,59 @@ def get_tap_functionality_script(is_embed: bool = False):
             lastTapTime = currentTime;
             clearTimeout(tapTimer);
             
-            tapTimer = setTimeout(() => {{
+            tapTimer = setTimeout(() => {
                 const rect = videoContainer.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
                 const screenWidth = rect.width;
                 
-                if (tapCount === 1) {{
+                if (tapCount === 1) {
                     art.toggle();
-                }} else if (tapCount === 2) {{
-                    if (x < screenWidth / 2) {{
+                } else if (tapCount === 2) {
+                    if (x < screenWidth / 2) {
                         art.backward = 10;
                         art.notice.show = '<i class="fas fa-backward"></i> -10s';
                         createSeekIndicator('backward', x, y);
-                    }} else {{
+                    } else {
                         art.forward = 10;
                         art.notice.show = '<i class="fas fa-forward"></i> +10s';
                         createSeekIndicator('forward', x, y);
-                    }}
-                }} else if (tapCount >= 3) {{
+                    }
+                } else if (tapCount >= 3) {
                     art.fullscreen = !art.fullscreen;
                     createFullscreenIndicator(x, y);
-                }}
+                }
                 
                 tapCount = 0;
-            }}, 350);
-        }});
+            }, 350);
+        });
         
-        // Keyboard controls
-        document.addEventListener('keydown', (e) => {{
+        document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             
-            if (e.key === 'l' || e.key === 'L') {{
+            if (e.key === 'l' || e.key === 'L') {
                 art.forward = 10;
                 art.notice.show = '<i class="fas fa-forward"></i> +10s';
                 e.preventDefault();
-            }}
-            if (e.key === 'j' || e.key === 'J') {{
+            }
+            if (e.key === 'j' || e.key === 'J') {
                 art.backward = 10;
                 art.notice.show = '<i class="fas fa-backward"></i> -10s';
                 e.preventDefault();
-            }}
-            if (e.key === 'k' || e.key === 'K') {{
+            }
+            if (e.key === 'k' || e.key === 'K') {
                 art.toggle();
                 e.preventDefault();
-            }}
-            if (e.key === 'f' || e.key === 'F') {{
+            }
+            if (e.key === 'f' || e.key === 'F') {
                 art.fullscreen = !art.fullscreen;
                 e.preventDefault();
-            }}
-        }});
+            }
+        });
     """
 
 @router.get("/{fileId}")
 async def stream_file(fileId: str, request: Request):
-    """Direct stream endpoint with range support"""
     if not re.match(r'^[a-f0-9]{24}$', fileId):
         raise HTTPException(status_code=400, detail="Invalid file ID format")
     
@@ -301,7 +337,6 @@ async def stream_file(fileId: str, request: Request):
     return await stream_file_direct(file_data, request)
 
 async def stream_file_direct(file_data: dict, request: Request):
-    """Stream with DC migration support"""
     try:
         bot_client = get_bot()
     except Exception:
@@ -393,7 +428,6 @@ async def stream_file_direct(file_data: dict, request: Request):
 
 @router.get("/watch/{fileId}")
 async def watch_file(fileId: str):
-    """Watch page with black and red theme"""
     if not re.match(r'^[a-f0-9]{24}$', fileId):
         raise HTTPException(status_code=400, detail="Invalid file ID")
     
@@ -402,17 +436,18 @@ async def watch_file(fileId: str):
         raise HTTPException(status_code=404, detail="File not found")
     
     file_name = file_data.get('fileName', 'Video')
+    base_name = file_data.get('baseName', file_name)
     stream_url = f"{config.BASE_APP_URL}/{fileId}"
     download_url = f"{config.BASE_APP_URL}/dl/{fileId}"
-    quality = file_data.get('quality', '')
+    quality = file_data.get('quality', 'Unknown')
     language = file_data.get('language', '')
     size_mb = file_data.get('size', 0) / (1024 * 1024)
     duration = file_data.get('duration', 0)
     views = file_data.get('views', 0)
     is_mkv = file_name.lower().endswith('.mkv')
     
-    artplayer_config = get_artplayer_config(stream_url, file_name, is_mkv, download_url, False)
-    tap_script = get_tap_functionality_script(False)
+    artplayer_config = get_artplayer_config_with_quality(fileId, stream_url, file_name, is_mkv, download_url, quality)
+    tap_script = get_tap_functionality_script()
     
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -439,7 +474,7 @@ async def watch_file(fileId: str):
 
     <div class="glass-container">
         <div class="player-header">
-            <div class="title">{file_name}</div>
+            <div class="title">{base_name}</div>
             <div class="meta-badges">
                 {f'<span class="badge"><i class="fas fa-video"></i> {quality}</span>' if quality else ''}
                 {f'<span class="badge"><i class="fas fa-language"></i> {language}</span>' if language else ''}
@@ -602,7 +637,6 @@ async def watch_file(fileId: str):
 
 @router.get("/embed/{fileId}")
 async def embed_file(fileId: str):
-    """Embed page with unified player (includes download button now)"""
     if not re.match(r'^[a-f0-9]{24}$', fileId):
         raise HTTPException(status_code=400, detail="Invalid file ID")
 
@@ -613,11 +647,10 @@ async def embed_file(fileId: str):
     file_name = file_data.get('fileName', 'Video')
     stream_url = f"{config.BASE_APP_URL}/{fileId}"
     download_url = f"{config.BASE_APP_URL}/dl/{fileId}"
+    quality = file_data.get('quality', 'Unknown')
     is_mkv = file_name.lower().endswith('.mkv')
 
-    # ✅ Pass download_url now
-    artplayer_config = get_artplayer_config(stream_url, file_name, is_mkv, download_url, True)
-    tap_script = get_tap_functionality_script(True)
+    artplayer_config = get_artplayer_config_with_quality(fileId, stream_url, file_name, is_mkv, download_url, quality)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -643,37 +676,6 @@ async def embed_file(fileId: str):
             width: 100vw;
             height: 100vh;
         }}
-        .seek-indicator {{
-            position: absolute;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            animation: seekPulse 0.8s ease-out;
-        }}
-        .seek-indicator i {{
-            font-size: 48px;
-            color: #ffffff;
-            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
-            filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.4));
-        }}
-        .seek-indicator span {{
-            font-size: 18px;
-            font-weight: 700;
-            color: #ffffff;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 6px 14px;
-            border-radius: 50px;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-        }}
-        @keyframes seekPulse {{
-            0% {{ opacity: 0; transform: translate(-50%, -50%) scale(0.5); }}
-            50% {{ opacity: 1; transform: translate(-50%, -50%) scale(1.1); }}
-            100% {{ opacity: 0; transform: translate(-50%, -50%) scale(1); }}
-        }}
     </style>
 </head>
 <body>
@@ -682,7 +684,6 @@ async def embed_file(fileId: str):
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         {artplayer_config}
-        {tap_script}
         
         art.on('ready', () => {{
             console.log('Embed player ready');
@@ -713,7 +714,6 @@ async def embed_file(fileId: str):
     return HTMLResponse(content=html)
 
 async def get_media_session(client, file_id: FileId):
-    """Get/create media session for DC"""
     dc_id = file_id.dc_id
     if not hasattr(client, 'media_sessions'):
         client.media_sessions = {}
@@ -739,7 +739,6 @@ async def get_media_session(client, file_id: FileId):
         return media_session
 
 async def get_location(file_id: FileId):
-    """Get file location"""
     if file_id.file_type == FileType.PHOTO:
         return raw.types.InputPhotoFileLocation(id=file_id.media_id, access_hash=file_id.access_hash, file_reference=file_id.file_reference, thumb_size=file_id.thumbnail_size)
     return raw.types.InputDocumentFileLocation(id=file_id.media_id, access_hash=file_id.access_hash, file_reference=file_id.file_reference, thumb_size=file_id.thumbnail_size)

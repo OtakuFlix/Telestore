@@ -58,6 +58,15 @@ async def create_indexes():
         await db_instance.db.files.create_index("telegramFileId")
         await db_instance.db.files.create_index([("folderId", 1), ("uploadedAt", -1)])
         
+        # ==================== New Indexes ====================
+        # Quality folder indexes
+        await db_instance.db.folders.create_index([("parentFolderId", 1), ("isQualityFolder", 1), ("quality", 1)])
+        
+        # Base name and quality group indexes
+        await db_instance.db.files.create_index("baseName")
+        await db_instance.db.files.create_index([("folderId", 1), ("baseName", 1)])
+        await db_instance.db.files.create_index([("baseName", 1), ("quality", 1)])
+        
         print("[DATABASE] Indexes created successfully")
     except Exception as e:
         print(f"[DATABASE] Error creating indexes: {e}")

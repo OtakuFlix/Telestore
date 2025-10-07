@@ -145,6 +145,11 @@ docker run -d \
 
 ## API Endpoints
 
+GET /api/file_list/{folder_id} - Simplified file list with master_group_id
+GET /api/stream/{master_group_id}?quality=1080p - Stream by master group
+GET /api/quality_info/{file_id} - Get available qualities for a file
+GET /api/master_info/{master_group_id} - Get master group information
+GET /api/quality_folders/{parent_folder_id} - List quality subfolders
 - `GET /` - API info
 - `GET /health` - Health check
 - `GET /{fileId}` - Stream file (direct video URL)

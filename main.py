@@ -8,6 +8,7 @@ from pyrogram import Client, idle
 from database.connection import connect_db, disconnect_db
 from config import config
 from bot.client import set_bot
+from api.routes import stream, download, api_endpoints  # <-- new route import
 
 # Global variables
 bot = None
@@ -90,7 +91,7 @@ app = FastAPI(
 )
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="api/static"), name="static")   # <-- add this here
+app.mount("/static", StaticFiles(directory="api/static"), name="static")
 
 # CORS middleware
 app.add_middleware(
@@ -102,9 +103,9 @@ app.add_middleware(
 )
 
 # Include routes
-from api.routes import stream, download
 app.include_router(stream.router)
 app.include_router(download.router)
+app.include_router(api_endpoints.router)  # <-- newly added route
 
 @app.get("/")
 async def root():

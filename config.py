@@ -30,7 +30,7 @@ class Config:
             BOT_TOKEN=os.getenv("BOT_TOKEN", "7143196160:AAHPSGNx1fisHHL7Nesz57asBf-UovelUPk"),
             CHANNEL_ID=int(os.getenv("CHANNEL_ID", -1002151954601)),
             MONGODB_URI=os.getenv("MONGODB_URI", "mongodb+srv://mhsm:mhsm@cluster0.j9figvh.mongodb.net/?retryWrites=true&w=majority"),
-            MONGODB_DB=os.getenv("MONGODB_DB", "telestore"),
+            MONGODB_DB=os.getenv("MONGODB_DB", "tel"),
             BASE_APP_URL=os.getenv("BASE_APP_URL", "http://localhost:8000"),
             PORT=int(os.getenv("PORT", "8000")),
         )
