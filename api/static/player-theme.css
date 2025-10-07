@@ -147,10 +147,10 @@ body {
     gap: var(--spacing-sm);
 }
 
-.art-setting .art-switch .art-icon-switchOn svg path,
-.art-setting .art-switch .art-icon-switchOff svg path {
-    fill: var(--art-theme) !important;
+svg.icon path {
+  fill: var(--art-theme) !important;
 }
+
 
 .theme-toggle {
     width: 44px;
