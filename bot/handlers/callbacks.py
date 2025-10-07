@@ -28,10 +28,8 @@ def register_callback_handlers(bot):
 
     @bot.on_callback_query(filters.regex(r"^folders:\d+$"))
     async def folders_callback(bot_instance, callback: CallbackQuery):
-        # use the clicker's user id (callback.from_user) — this is the main fix
         page = int(callback.data.split(":")[1])
         user_id = callback.from_user.id if callback.from_user else None
-        print(f"[CALLBACKS] folders_callback clicked by user_id={user_id}, page={page}")
         await show_folders_page(callback.message, page, edit=True, user_id=user_id)
         await callback.answer()
 
@@ -44,43 +42,51 @@ def register_callback_handlers(bot):
         await show_folder_contents(callback.message, folder_id, page, edit=True, user_id=user_id)
         await callback.answer()
 
-    # ... keep the rest of your callback handlers unchanged ...
-    @bot.on_callback_query(filters.regex(r"^file:\w+$"))
+    @bot.on_callback_query(filters.regex(r"^file:[a-f0-9]{24}$"))
     async def file_view_callback(bot_instance, callback: CallbackQuery):
-        # unchanged implementation
+        """Handle file view - file_id is MongoDB ObjectId (24 hex chars)"""
         file_id = callback.data.split(":")[1]
+        
         file_data = await get_file_by_id(file_id)
         if not file_data:
             await callback.answer("❌ File not found!", show_alert=True)
             return
+        
         from config import config
         info = f"🎬 **{file_data.get('fileName', 'Unnamed')}**\n\n"
+        
         if file_data.get('size'):
             size_mb = file_data['size'] / (1024 * 1024)
             info += f"💾 Size: {size_mb:.2f} MB\n"
+        
         if file_data.get('mimeType'):
             info += f"📄 Type: {file_data['mimeType']}\n"
+        
         if file_data.get('quality'):
             info += f"🎥 Quality: {file_data['quality']}\n"
+        
         if file_data.get('language'):
             info += f"🗣 Language: {file_data['language']}\n"
+        
         if file_data.get('caption'):
             info += f"\n📝 {file_data['caption']}\n"
+        
         info += f"\n🔗 **Links:**"
-        info += f"\n▶️ Watch: {config.BASE_APP_URL}/{file_id}"
+        info += f"\n▶️ Watch: {config.BASE_APP_URL}/watch/{file_id}"
         info += f"\n⬇️ Download: {config.BASE_APP_URL}/dl/{file_id}"
-
+        
         await callback.message.edit_text(
             info,
             reply_markup=file_actions_kb(file_id, file_data['folderId'])
         )
         await callback.answer()
 
-    @bot.on_callback_query(filters.regex(r"^delete_file:\w+:\w+$"))
+    @bot.on_callback_query(filters.regex(r"^delete_file:[a-f0-9]{24}:\w+$"))
     async def delete_file_confirm_callback(bot_instance, callback: CallbackQuery):
         parts = callback.data.split(":")
         file_id = parts[1]
         folder_id = parts[2]
+        
         await callback.message.edit_text(
             "⚠️ **Delete File?**\n\n"
             "Are you sure you want to delete this file?\nThis action cannot be undone.",
@@ -88,12 +94,14 @@ def register_callback_handlers(bot):
         )
         await callback.answer()
 
-    @bot.on_callback_query(filters.regex(r"^confirm_delete_file:\w+:\w+$"))
+    @bot.on_callback_query(filters.regex(r"^confirm_delete_file:[a-f0-9]{24}:\w+$"))
     async def confirm_delete_file_callback(bot_instance, callback: CallbackQuery):
         parts = callback.data.split(":")
         file_id = parts[1]
         folder_id = parts[2]
+        
         success = await delete_file(file_id)
+        
         if success:
             await callback.answer("✅ File deleted successfully!", show_alert=True)
             await show_folder_contents(callback.message, folder_id, 1, edit=True)
@@ -103,10 +111,12 @@ def register_callback_handlers(bot):
     @bot.on_callback_query(filters.regex(r"^delete_folder:\w+$"))
     async def delete_folder_confirm_callback(bot_instance, callback: CallbackQuery):
         folder_id = callback.data.split(":")[1]
+        
         folder = await get_folder_by_id(folder_id)
         if not folder:
             await callback.answer("❌ Folder not found!", show_alert=True)
             return
+        
         await callback.message.edit_text(
             f"⚠️ **Delete Folder?**\n\n📁 **{folder['name']}**\n\n"
             f"This will delete the folder and ALL files inside it.\n"
@@ -118,7 +128,9 @@ def register_callback_handlers(bot):
     @bot.on_callback_query(filters.regex(r"^confirm_delete_folder:\w+$"))
     async def confirm_delete_folder_callback(bot_instance, callback: CallbackQuery):
         folder_id = callback.data.split(":")[1]
+        
         success = await delete_folder(folder_id, callback.from_user.id)
+        
         if success:
             await callback.answer("✅ Folder deleted successfully!", show_alert=True)
             await show_folders_page(callback.message, 1, edit=True)
@@ -128,6 +140,7 @@ def register_callback_handlers(bot):
     @bot.on_callback_query(filters.regex(r"^stats$"))
     async def stats_callback(bot_instance, callback: CallbackQuery):
         stats = await get_stats(callback.from_user.id)
+        
         await callback.message.edit_text(
             f"📊 **Your Statistics:**\n\n"
             f"📁 Total Folders: {stats['folders']}\n"

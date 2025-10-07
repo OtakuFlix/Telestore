@@ -80,11 +80,11 @@ def folder_view_kb(folder_id: str, files: list, page: int, total_pages: int):
     return InlineKeyboardMarkup(buttons)
 
 def file_actions_kb(file_id: str, folder_id: str):
-    """File actions keyboard"""
+    """File actions keyboard - file_id is now MongoDB ObjectId string"""
     from config import config
     
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("▶️ Watch Online", url=f"{config.BASE_APP_URL}/{file_id}")],
+        [InlineKeyboardButton("▶️ Watch Online", url=f"{config.BASE_APP_URL}/watch/{file_id}")],
         [InlineKeyboardButton("⬇️ Download", url=f"{config.BASE_APP_URL}/dl/{file_id}")],
         [
             InlineKeyboardButton("✏️ Rename", callback_data=f"rename_file:{file_id}"),

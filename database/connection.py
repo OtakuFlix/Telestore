@@ -1,5 +1,6 @@
 # ==================== database/connection.py ====================
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import OperationFailure
 from config import config
 
 class Database:
@@ -34,13 +35,25 @@ async def disconnect_db():
 async def create_indexes():
     """Create database indexes for performance"""
     try:
+        # Drop legacy unique index that referenced the deprecated fileId field
+        try:
+            await db_instance.db.files.drop_index("fileId_1")
+            print("[DATABASE] Dropped legacy fileId index")
+        except OperationFailure as drop_error:
+            if "index not found" not in str(drop_error):
+                print(f"[DATABASE] Unexpected error dropping fileId index: {drop_error}")
+                raise
+        except Exception as drop_error:
+            print(f"[DATABASE] Error dropping legacy indexes: {drop_error}")
+            raise
+        
         # Folders collection indexes
         await db_instance.db.folders.create_index("folderId", unique=True)
         await db_instance.db.folders.create_index("createdBy")
         await db_instance.db.folders.create_index([("createdBy", 1), ("createdAt", -1)])
         
         # Files collection indexes
-        await db_instance.db.files.create_index("fileId", unique=True)
+        await db_instance.db.files.create_index([("folderId", 1), ("telegramFileUniqueId", 1)], unique=True)
         await db_instance.db.files.create_index("folderId")
         await db_instance.db.files.create_index("telegramFileId")
         await db_instance.db.files.create_index([("folderId", 1), ("uploadedAt", -1)])

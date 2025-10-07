@@ -3,6 +3,8 @@ from database.connection import get_database
 from datetime import datetime
 from typing import List, Optional
 from pymongo.errors import DuplicateKeyError
+from bson.objectid import ObjectId
+from bson.errors import InvalidId
 
 # ==================== FOLDER OPERATIONS ====================
 
@@ -85,7 +87,7 @@ async def delete_folder(folder_id: str, user_id: int):
 # ==================== FILE OPERATIONS ====================
 
 async def add_file_to_folder(file_data: dict, uploaded_by: int):
-    """Add file to folder"""
+    """Add file to folder - returns MongoDB ObjectId as string"""
     db = get_database()
     
     file_data['uploadedBy'] = uploaded_by
@@ -93,40 +95,37 @@ async def add_file_to_folder(file_data: dict, uploaded_by: int):
     file_data['views'] = 0
     file_data['downloads'] = 0
     
-    # Allow same Telegram file in different folders but prevent duplicates within the same folder
+    # Check for duplicates using telegramFileUniqueId
     existing = await db.files.find_one({
-        '$or': [
-            {
-                'telegramFileId': file_data['telegramFileId'],
-                'folderId': file_data['folderId']
-            },
-            {
-                'telegramFileUniqueId': file_data.get('telegramFileUniqueId'),
-                'folderId': file_data['folderId']
-            }
-        ]
+        'telegramFileUniqueId': file_data.get('telegramFileUniqueId'),
+        'folderId': file_data['folderId']
     })
     if existing:
-        return False
+        return {
+            'documentId': str(existing['_id']),
+            'inserted': False
+        }
     
-    try:
-        result = await db.files.insert_one(file_data)
-    except DuplicateKeyError:
-        return False
+    result = await db.files.insert_one(file_data)
     
-    # Increment folder file count
     if result.inserted_id:
         await db.folders.update_one(
             {'folderId': file_data['folderId']},
             {'$inc': {'fileCount': 1}}
         )
     
-    return result.inserted_id is not None
+    return {
+        'documentId': str(result.inserted_id),
+        'inserted': True
+    }
 
 async def get_file_by_id(file_id: str):
-    """Get file by ID"""
+    """Get file by MongoDB ObjectId string"""
     db = get_database()
-    return await db.files.find_one({'fileId': file_id})
+    try:
+        return await db.files.find_one({'_id': ObjectId(file_id)})
+    except InvalidId:
+        return None
 
 async def get_folder_files(folder_id: str, page: int = 1, page_size: int = 10):
     """Get files in folder with pagination"""
@@ -134,7 +133,13 @@ async def get_folder_files(folder_id: str, page: int = 1, page_size: int = 10):
     skip = (page - 1) * page_size
     
     cursor = db.files.find({'folderId': folder_id}).sort('uploadedAt', -1).skip(skip).limit(page_size)
-    return await cursor.to_list(length=page_size)
+    files = await cursor.to_list(length=page_size)
+    
+    # Add MongoDB _id as string to each file for easy access
+    for file in files:
+        file['fileId'] = str(file['_id'])
+    
+    return files
 
 async def count_folder_files(folder_id: str):
     """Count files in folder"""
@@ -144,48 +149,60 @@ async def count_folder_files(folder_id: str):
 async def update_file(file_id: str, update_data: dict):
     """Update file"""
     db = get_database()
-    result = await db.files.update_one(
-        {'fileId': file_id},
-        {'$set': update_data}
-    )
-    return result.modified_count > 0
+    try:
+        result = await db.files.update_one(
+            {'_id': ObjectId(file_id)},
+            {'$set': update_data}
+        )
+        return result.modified_count > 0
+    except InvalidId:
+        return False
 
 async def delete_file(file_id: str):
-    """Delete file"""
+    """Delete file by MongoDB ObjectId"""
     db = get_database()
     
-    # Get file to get folder ID
-    file = await db.files.find_one({'fileId': file_id})
-    if not file:
+    try:
+        # Get file to get folder ID
+        file = await db.files.find_one({'_id': ObjectId(file_id)})
+        if not file:
+            return False
+        
+        # Delete file
+        result = await db.files.delete_one({'_id': ObjectId(file_id)})
+        
+        # Decrement folder file count
+        if result.deleted_count > 0:
+            await db.folders.update_one(
+                {'folderId': file['folderId']},
+                {'$inc': {'fileCount': -1}}
+            )
+        
+        return result.deleted_count > 0
+    except InvalidId:
         return False
-    
-    # Delete file
-    result = await db.files.delete_one({'fileId': file_id})
-    
-    # Decrement folder file count
-    if result.deleted_count > 0:
-        await db.folders.update_one(
-            {'folderId': file['folderId']},
-            {'$inc': {'fileCount': -1}}
-        )
-    
-    return result.deleted_count > 0
 
 async def increment_views(file_id: str):
     """Increment file view count"""
     db = get_database()
-    await db.files.update_one(
-        {'fileId': file_id},
-        {'$inc': {'views': 1}}
-    )
+    try:
+        await db.files.update_one(
+            {'_id': ObjectId(file_id)},
+            {'$inc': {'views': 1}}
+        )
+    except InvalidId:
+        pass
 
 async def increment_downloads(file_id: str):
     """Increment file download count"""
     db = get_database()
-    await db.files.update_one(
-        {'fileId': file_id},
-        {'$inc': {'downloads': 1}}
-    )
+    try:
+        await db.files.update_one(
+            {'_id': ObjectId(file_id)},
+            {'$inc': {'downloads': 1}}
+        )
+    except InvalidId:
+        pass
 
 # ==================== USER OPERATIONS ====================
 
