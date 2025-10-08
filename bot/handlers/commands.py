@@ -1,4 +1,3 @@
-# ==================== bot/handlers/commands.py ====================
 from pyrogram import filters
 from pyrogram.types import Message
 from bot.keyboards import main_menu_kb
@@ -6,7 +5,6 @@ from database.operations import get_stats, create_folder
 import secrets
 import string
 
-# Import helpers only (not media) to avoid circular imports
 from bot.handlers.helpers import show_folders_page, show_folder_contents
 
 
@@ -49,6 +47,10 @@ def register_command_handlers(bot):
 • Watch link: Streamable in browser
 • Download link: Direct download
 
+**Database Backup/Restore:**
+• Use /vanish to export entire database
+• Use /retrieve to restore from backup JSON
+
 **Managing Content:**
 • Rename folders and files anytime
 • Delete individual files or entire folders
@@ -76,7 +78,6 @@ Need help? Contact support.
             await message.reply_text("❌ Folder name must be at least 2 characters long.")
             return
 
-        # ✅ Unique 12-character folder ID
         folder_id = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
 
         await create_folder(folder_id=folder_id, name=folder_name, created_by=message.from_user.id)
@@ -107,3 +108,83 @@ Need help? Contact support.
     async def myfolders_command(client, message: Message):
         """Handle /myfolders command - quick access to folders"""
         await show_folders_page(message, page=1, edit=False)
+
+    @bot.on_message(filters.command("vanish") & filters.private)
+    async def vanish_command(client, message: Message):
+        """Handle /vanish command - Export database backup"""
+        from database.backup import export_database
+        from config import config
+        import os
+        
+        user_id = message.from_user.id
+        
+        status_msg = await message.reply_text("🔄 **Exporting database...**\n\nThis may take a moment...")
+        
+        try:
+            json_file = await export_database()
+            
+            if not os.path.exists(json_file):
+                await status_msg.edit_text("❌ Failed to create backup file.")
+                return
+            
+            file_size = os.path.getsize(json_file) / (1024 * 1024)
+            
+            await status_msg.edit_text(f"📤 **Uploading backup...**\n💾 Size: {file_size:.2f} MB")
+            
+            from datetime import datetime
+            backup_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+            
+            caption = (
+                f"📦 **Database Backup**\n\n"
+                f"📅 Date: {backup_time}\n"
+                f"💾 Size: {file_size:.2f} MB\n"
+                f"👤 Requested by: {message.from_user.first_name} ({user_id})\n\n"
+                f"⚠️ **Keep this file safe!**\n"
+                f"Use /retrieve to restore this backup"
+            )
+            
+            if config.CHANNEL_ID:
+                try:
+                    await client.send_document(
+                        chat_id=config.CHANNEL_ID,
+                        document=json_file,
+                        caption=caption
+                    )
+                except Exception as e:
+                    print(f"[VANISH] Error sending to channel: {e}")
+            
+            await client.send_document(
+                chat_id=message.chat.id,
+                document=json_file,
+                caption="✅ **Database backup created successfully!**\n\n"
+                        "📥 Keep this file safe in a secure location.\n"
+                        "🔄 Use /retrieve to restore it when needed."
+            )
+            
+            await status_msg.delete()
+            
+            os.remove(json_file)
+            print(f"[VANISH] Backup file deleted from server: {json_file}")
+            
+        except Exception as e:
+            print(f"[VANISH] Error: {e}")
+            await status_msg.edit_text(f"❌ Error creating backup:\n`{str(e)}`")
+
+    @bot.on_message(filters.command("retrieve") & filters.private)
+    async def retrieve_command(client, message: Message):
+        """Handle /retrieve command - Prompt for backup file"""
+        from bot.handlers.backup_handlers import user_waiting_for_json
+        
+        user_id = message.from_user.id
+        user_waiting_for_json[user_id] = True
+        
+        await message.reply_text(
+            "📥 **Database Restore Mode**\n\n"
+            "Please send me the JSON backup file you want to restore.\n\n"
+            "⚠️ **Important:**\n"
+            "• This will import data into the current database\n"
+            "• Existing data will NOT be deleted\n"
+            "• Duplicate entries will be automatically skipped\n"
+            "• This operation cannot be undone\n\n"
+            "📎 Send the `.json` file now, or use /cancel to abort."
+        )

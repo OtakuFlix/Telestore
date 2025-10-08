@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
 from fastapi.responses import StreamingResponse, HTMLResponse
 from database.operations import get_file_by_id, increment_views, get_files_by_basename
 from bot.client import get_bot
@@ -9,6 +9,7 @@ from pyrogram.session import Session, Auth
 from pyrogram import utils as pyro_utils
 import re
 import math
+from utils.master_id import generate_master_group_id
 
 router = APIRouter()
 
@@ -77,10 +78,13 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
             volume: 0.8,
             autoplay: false,
             pip: true,
+            miniProgressBar: true,
             fullscreen: true,
             fullscreenWeb: true,
             setting: true,
             playbackRate: true,
+            autoPlayback: true,
+            airplay: true,
             aspectRatio: false,
             screenshot: true,
             hotkey: true,
@@ -97,6 +101,9 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
             {mkv_custom_type}
             settings: [],
             controls: {controls_config},
+            icons: {{
+                loading: '<img width="80" height="80" src="https://media0.giphy.com/media/v1.Y2lkPTZjMDliOTUyNWtkN2I5c2hmYWo3aHl2cmhicDU2dHVoOGp1a21tbjhndmFkb3U3dyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/FgH5xSNjGHZsiYPWAX/giphy.gif">'
+            }},
         }});
 
         async function fetchQualityOptions() {{
@@ -488,7 +495,7 @@ async def watch_file(fileId: str, request: Request):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{file_name}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.1.1/dist/artplayer.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/player-theme.css">
 </head>
@@ -576,7 +583,7 @@ async def watch_file(fileId: str, request: Request):
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/artplayer@5.1.1/dist/artplayer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         function toggleTheme() {{
@@ -670,10 +677,9 @@ async def watch_file(fileId: str, request: Request):
 
 # NEW: Watch with Master Group ID
 @router.get("/watch/master/{masterGroupId}")
-async def watch_master_group(masterGroupId: str, request: Request, quality: str = "1080p"):
+async def watch_master_group(masterGroupId: str, request: Request, quality: str = Query(default="1080p")):
     """Watch video using master group ID with quality selection"""
     from database.connection import get_database
-    import hashlib
     
     # Validate master group ID format
     if not re.match(r'^[a-f0-9]{24}$', masterGroupId):
@@ -682,18 +688,12 @@ async def watch_master_group(masterGroupId: str, request: Request, quality: str 
     db = get_database()
     
     # Find files matching this master group ID
-    def generate_master_group_id(folder_id: str, base_name: str) -> str:
-        file_name_without_ext = base_name
-        if '.' in base_name:
-            parts = base_name.rsplit('.', 1)
-            if parts[1].lower() in ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm']:
-                file_name_without_ext = parts[0]
-        
-        combined = f"{folder_id}:{file_name_without_ext}"
-        return hashlib.md5(combined.encode()).hexdigest()[:24]
+    all_files = await db.files.find({}).to_list(length=None)
     
-    matched_files = await db.files.find({"master_group_id": masterGroupId}).to_list(length=None)
-
+    # Query directly by parent_master_group_id
+    matched_files = await db.files.find({
+        'parent_master_group_id': masterGroupId
+    }).to_list(length=None)
     
     if not matched_files:
         raise HTTPException(status_code=404, detail="Master group not found")
@@ -734,7 +734,7 @@ async def watch_master_group(masterGroupId: str, request: Request, quality: str 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{file_name}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.1.1/dist/artplayer.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/player-theme.css">
 </head>
@@ -824,7 +824,7 @@ async def watch_master_group(masterGroupId: str, request: Request, quality: str 
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/artplayer@5.1.1/dist/artplayer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         function toggleTheme() {{
@@ -942,7 +942,7 @@ async def embed_file(fileId: str, request: Request):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{file_name}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.1.1/dist/artplayer.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         html, body {{
@@ -964,7 +964,7 @@ async def embed_file(fileId: str, request: Request):
 </head>
 <body>
     <div id="artplayer"></div>
-    <script src="https://cdn.jsdelivr.net/npm/artplayer@5.1.1/dist/artplayer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         {artplayer_config}
@@ -999,37 +999,22 @@ async def embed_file(fileId: str, request: Request):
 
 # NEW: Embed with Master Group ID
 @router.get("/embed/master/{masterGroupId}")
-async def embed_master_group(masterGroupId: str, request: Request, quality: str = "1080p"):
+async def embed_master_group(masterGroupId: str, request: Request, quality: str = Query(default="1080p")):
     """Embed video using master group ID with quality selection"""
     from database.connection import get_database
-    import hashlib
     
     if not re.match(r'^[a-f0-9]{24}$', masterGroupId):
         raise HTTPException(status_code=400, detail="Invalid master group ID format")
 
     db = get_database()
     
-    def generate_master_group_id(folder_id: str, base_name: str) -> str:
-        file_name_without_ext = base_name
-        if '.' in base_name:
-            parts = base_name.rsplit('.', 1)
-            if parts[1].lower() in ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm']:
-                file_name_without_ext = parts[0]
-        
-        combined = f"{folder_id}:{file_name_without_ext}"
-        return hashlib.md5(combined.encode()).hexdigest()[:24]
-    
     all_files = await db.files.find({}).to_list(length=None)
     
-    matched_files = []
-    for file in all_files:
-        base_name = file.get('baseName', '')
-        folder_id = file.get('folderId', '')
-        computed_id = generate_master_group_id(folder_id, base_name)
+    # Query directly by parent_master_group_id
+    matched_files = await db.files.find({
+        'parent_master_group_id': masterGroupId
+    }).to_list(length=None)
         
-        if computed_id == masterGroupId:
-            matched_files.append(file)
-    
     if not matched_files:
         raise HTTPException(status_code=404, detail="Master group not found")
     
@@ -1062,7 +1047,7 @@ async def embed_master_group(masterGroupId: str, request: Request, quality: str 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{file_name}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.1.1/dist/artplayer.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         html, body {{
@@ -1084,7 +1069,7 @@ async def embed_master_group(masterGroupId: str, request: Request, quality: str 
 </head>
 <body>
     <div id="artplayer"></div>
-    <script src="https://cdn.jsdelivr.net/npm/artplayer@5.1.1/dist/artplayer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         {artplayer_config}

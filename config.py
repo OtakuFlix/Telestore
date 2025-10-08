@@ -22,6 +22,7 @@ class Config:
     
     # Channel (for updates, announcements)
     CHANNEL_ID: int
+    LOGS_CHANNEL_ID: int
     @staticmethod
     def load() -> "Config":
         return Config(
@@ -29,6 +30,7 @@ class Config:
             API_HASH=os.getenv("API_HASH", "2a99a1375e26295626c04b4606f72752"),
             BOT_TOKEN=os.getenv("BOT_TOKEN", "7143196160:AAHPSGNx1fisHHL7Nesz57asBf-UovelUPk"),
             CHANNEL_ID=int(os.getenv("CHANNEL_ID", -1002151954601)),
+            LOGS_CHANNEL_ID=int(os.getenv("LOGS_CHANNEL_ID", -1003035992409)),
             MONGODB_URI=os.getenv("MONGODB_URI", "mongodb+srv://mhsm:mhsm@cluster0.j9figvh.mongodb.net/?retryWrites=true&w=majority"),
             MONGODB_DB=os.getenv("MONGODB_DB", "tel"),
             BASE_APP_URL=os.getenv("BASE_APP_URL", "http://localhost:8000"),

@@ -7,6 +7,7 @@ from database.operations import (
 )
 from config import config
 import re
+from utils.master_id import get_base_name_from_filename
 
 user_folder_context = {}
 user_quality_context = {}
@@ -57,7 +58,7 @@ def extract_language(filename: str) -> str:
     return None
 
 def extract_base_name(file_name: str) -> str:
-    name = re.sub(r'\.(mp4|mkv|avi|mov|wmv|flv|webm)', '', file_name)
+    return get_base_name_from_filename(file_name)
 
 async def handle_media(client, message: Message):
     user_id = message.from_user.id

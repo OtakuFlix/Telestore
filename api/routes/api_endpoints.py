@@ -5,20 +5,9 @@ from database.operations import (
     get_file_by_id
 )
 from typing import Optional
-import hashlib
+from utils.master_id import generate_master_group_id
 
 router = APIRouter()
-
-def generate_master_group_id(folder_id: str, base_name: str) -> str:
-    file_name_without_ext = base_name
-    if '.' in base_name:
-        parts = base_name.rsplit('.', 1)
-        if parts[1].lower() in ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm']:
-            file_name_without_ext = parts[0]
-    
-    combined = f"{folder_id}:{file_name_without_ext}"
-    return hashlib.md5(combined.encode()).hexdigest()[:24]
-
 @router.get("/api/folder_list")
 async def get_folder_list(user_id: int, parent_id: Optional[str] = None, page: int = 1, page_size: int = 20):
     try:
@@ -343,16 +332,10 @@ async def get_master_group_info(master_group_id: str):
         from database.connection import get_database
         db = get_database()
         
-        all_files = await db.files.find({}).to_list(length=None)
-        
-        matched_files = []
-        for file in all_files:
-            base_name = file.get('baseName', '')
-            folder_id = file.get('folderId', '')
-            computed_id = generate_master_group_id(folder_id, base_name)
-            
-            if computed_id == master_group_id:
-                matched_files.append(file)
+        # Search by parent_master_group_id (for quality folder structure)
+        matched_files = await db.files.find({
+            'parent_master_group_id': master_group_id
+        }).to_list(length=None)
         
         if not matched_files:
             raise HTTPException(status_code=404, detail="Master group not found")

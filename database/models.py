@@ -72,6 +72,7 @@ class File:
         views: int = 0,
         downloads: int = 0,
         quality_group_id: Optional[str] = None,
+        master_group_id: Optional[str] = None,
         parsed_from_caption: bool = False
     ):
         self.fileId = file_id
@@ -94,6 +95,7 @@ class File:
         self.views = views
         self.downloads = downloads
         self.qualityGroupId = quality_group_id
+        self.masterGroupId = master_group_id
         self.parsedFromCaption = parsed_from_caption
     
     def to_dict(self):
@@ -118,5 +120,6 @@ class File:
             'views': self.views,
             'downloads': self.downloads,
             'qualityGroupId': self.qualityGroupId,
+            'masterGroupId': self.masterGroupId,
             'parsedFromCaption': self.parsedFromCaption
         }
