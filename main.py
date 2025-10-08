@@ -1,4 +1,3 @@
-# ==================== main.py ====================
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -8,9 +7,8 @@ from pyrogram import Client, idle
 from database.connection import connect_db, disconnect_db
 from config import config
 from bot.client import set_bot
-from api.routes import stream, download, api_endpoints  # <-- new route import
+from api.routes import stream, download, api_endpoints
 
-# Global variables
 bot = None
 idle_task = None
 
@@ -21,10 +19,8 @@ async def lifespan(app: FastAPI):
     
     print(f"[STARTUP] Initializing TeleStore Bot...")
     
-    # Connect to database
     await connect_db()
     
-    # Create bot client
     bot = Client(
         name="telestore_bot",
         api_id=config.API_ID,
@@ -35,28 +31,24 @@ async def lifespan(app: FastAPI):
     )
     print(f"[STARTUP] Bot client created")
     
-    # Set bot globally
     set_bot(bot)
     
-    # Register handlers
     register_all_handlers(bot)
     print(f"[STARTUP] Handlers registered")
     
-    # Start bot
     await bot.start()
     me = await bot.get_me()
     print(f"[STARTUP] Bot started: @{me.username}")
     print(f"[STARTUP] API server running on port {config.PORT}")
     print(f"[STARTUP] Base URL: {config.BASE_APP_URL}")
     print(f"[STARTUP] Channel ID: {config.CHANNEL_ID}")
+    print(f"[STARTUP] Logs Channel ID: {config.LOGS_CHANNEL_ID}")
     
-    # Run idle in background to keep bot polling
     idle_task = asyncio.create_task(idle())
     print(f"[STARTUP] Bot is now listening for messages...")
     
     yield
     
-    # Cleanup
     print("[SHUTDOWN] Stopping services...")
     if idle_task:
         idle_task.cancel()
@@ -69,20 +61,19 @@ async def lifespan(app: FastAPI):
     print("[SHUTDOWN] Shutdown complete")
 
 def register_all_handlers(client):
-    """Register all bot handlers"""
-    # Import handler registration functions
+    """Register all bot handlers in correct order"""
     from bot.handlers.commands import register_command_handlers
     from bot.handlers.callbacks import register_callback_handlers
+    from bot.handlers.backup_handlers import register_backup_handlers
     from bot.handlers.media import register_media_handlers
     
-    # Register all handlers
     register_command_handlers(client)
     register_callback_handlers(client)
+    register_backup_handlers(client)
     register_media_handlers(client)
     
-    print(f"[HANDLERS] All handlers registered successfully")
+    print(f"[HANDLERS] All handlers registered (backup has priority over media)")
 
-# Create FastAPI app
 app = FastAPI(
     title="TeleStore API",
     description="Stream and download files from Telegram",
@@ -90,10 +81,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Mount static files
 app.mount("/static", StaticFiles(directory="api/static"), name="static")
 
-# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -102,10 +91,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routes
 app.include_router(stream.router)
 app.include_router(download.router)
-app.include_router(api_endpoints.router)  # <-- newly added route
+app.include_router(api_endpoints.router)
 
 @app.get("/")
 async def root():
@@ -127,7 +115,8 @@ async def root():
             "Auto channel backup",
             "Metadata extraction",
             "Quality detection",
-            "Language detection"
+            "Language detection",
+            "Database backup & restore"
         ]
     }
 

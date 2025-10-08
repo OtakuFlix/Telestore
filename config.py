@@ -32,7 +32,7 @@ class Config:
             CHANNEL_ID=int(os.getenv("CHANNEL_ID", -1002151954601)),
             LOGS_CHANNEL_ID=int(os.getenv("LOGS_CHANNEL_ID", -1003035992409)),
             MONGODB_URI=os.getenv("MONGODB_URI", "mongodb+srv://mhsm:mhsm@cluster0.j9figvh.mongodb.net/?retryWrites=true&w=majority"),
-            MONGODB_DB=os.getenv("MONGODB_DB", "tel"),
+            MONGODB_DB=os.getenv("MONGODB_DB", "bot"),
             BASE_APP_URL=os.getenv("BASE_APP_URL", "http://localhost:8000"),
             PORT=int(os.getenv("PORT", "8000")),
         )

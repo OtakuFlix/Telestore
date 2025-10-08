@@ -1,8 +1,8 @@
 from pyrogram import filters
 from pyrogram.types import Message
 from database.backup import export_database, import_database, log_change
+from database.connection import get_database
 from config import config
-from bot.client import get_bot
 import os
 
 user_waiting_for_json = {}
@@ -12,51 +12,65 @@ def register_backup_handlers(bot):
     @bot.on_message(filters.command("vanish") & filters.private)
     async def vanish_command(client, message: Message):
         user_id = message.from_user.id
-        
         status_msg = await message.reply_text("🔄 **Exporting database...**")
-        
+
         try:
             json_file = await export_database()
-            
             if not os.path.exists(json_file):
                 await status_msg.edit_text("❌ Failed to create backup file.")
                 return
-            
+
             file_size = os.path.getsize(json_file) / (1024 * 1024)
-            
+
             await status_msg.edit_text(f"📤 **Uploading backup...**\n💾 Size: {file_size:.2f} MB")
-            
+
             caption = (
                 f"📦 **Database Backup**\n"
                 f"📅 Date: {status_msg.date.strftime('%Y-%m-%d %H:%M:%S')}\n"
                 f"💾 Size: {file_size:.2f} MB\n"
                 f"👤 Requested by: {message.from_user.first_name} ({user_id})\n\n"
-                f"Use /retrieve to restore this backup"
+                f"Use `/retrieve` to restore this backup later."
             )
-            
+
+            # Send backup to main channel if defined
             if config.CHANNEL_ID:
                 await client.send_document(
                     chat_id=config.CHANNEL_ID,
                     document=json_file,
                     caption=caption
                 )
-            
+
+            # Send backup to user personally
             await client.send_document(
                 chat_id=message.chat.id,
                 document=json_file,
-                caption="✅ **Database backup created successfully!**\n\n"
-                        "Keep this file safe. Use /retrieve to restore it."
+                caption="✅ **Backup created successfully!**\n\n"
+                        "📁 File saved.\n\n"
+                        "⚠️ The database will now be **wiped clean**.\n"
+                        "You can restore anytime using `/retrieve`."
             )
-            
-            await status_msg.delete()
-            
+
+            # Proceed to database cleanup
+            await status_msg.edit_text("⚠️ **Formatting database... Please wait...**")
+
+            db = get_database()
+            collections = await db.list_collection_names()
+
+            for collection_name in collections:
+                collection = db[collection_name]
+                delete_result = await collection.delete_many({})
+                print(f"[VANISH] Cleared {delete_result.deleted_count} documents from '{collection_name}'")
+
+            await status_msg.edit_text("🧹 **Database has been wiped clean!**\n\n✅ Backup was sent to you.")
+            print("[VANISH] Database successfully formatted.")
+
             os.remove(json_file)
             print(f"[BACKUP] Backup file deleted: {json_file}")
-            
+
         except Exception as e:
-            print(f"[BACKUP] Error: {e}")
-            await status_msg.edit_text(f"❌ Error creating backup: {str(e)}")
-    
+            print(f"[VANISH] Error: {e}")
+            await status_msg.edit_text(f"❌ Error during vanish: {str(e)}")
+
     @bot.on_message(filters.command("retrieve") & filters.private)
     async def retrieve_command(client, message: Message):
         user_id = message.from_user.id
@@ -79,12 +93,14 @@ def register_backup_handlers(bot):
         else:
             await message.reply_text("No operation to cancel.")
     
-    @bot.on_message(filters.document & filters.private)
+    @bot.on_message(filters.document & filters.private, group=1)
     async def handle_json_upload(client, message: Message):
         user_id = message.from_user.id
         
         if user_id not in user_waiting_for_json:
             return
+        
+        message.continue_propagation = False
         
         document = message.document
         
