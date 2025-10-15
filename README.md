@@ -144,7 +144,11 @@ docker run -d \
 - **All formats supported by Telegram's 2GB file limit**
 
 ## API Endpoints
+<<<<<<< HEAD
 GET /api/folder_list?user_id=1740287480&page=1& page_size=200
+=======
+
+>>>>>>> origin/main
 GET /api/file_list/{folder_id} - Simplified file list with master_group_id
 GET /api/stream/{master_group_id}?quality=1080p - Stream by master group
 GET /api/quality_info/{file_id} - Get available qualities for a file

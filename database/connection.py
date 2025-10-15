@@ -42,10 +42,19 @@ async def create_indexes():
         except OperationFailure as drop_error:
             if "index not found" not in str(drop_error):
                 print(f"[DATABASE] Unexpected error dropping fileId index: {drop_error}")
+<<<<<<< HEAD
         except Exception as drop_error:
             print(f"[DATABASE] Error dropping legacy indexes: {drop_error}")
         
         # Folders collection indexes (now with integer IDs)
+=======
+                raise
+        except Exception as drop_error:
+            print(f"[DATABASE] Error dropping legacy indexes: {drop_error}")
+            raise
+        
+        # Folders collection indexes
+>>>>>>> origin/main
         await db_instance.db.folders.create_index("folderId", unique=True)
         await db_instance.db.folders.create_index("createdBy")
         await db_instance.db.folders.create_index([("createdBy", 1), ("createdAt", -1)])
@@ -56,6 +65,10 @@ async def create_indexes():
         await db_instance.db.files.create_index("telegramFileId")
         await db_instance.db.files.create_index([("folderId", 1), ("uploadedAt", -1)])
         
+<<<<<<< HEAD
+=======
+        # ==================== New Indexes ====================
+>>>>>>> origin/main
         # Quality folder indexes
         await db_instance.db.folders.create_index([("parentFolderId", 1), ("isQualityFolder", 1), ("quality", 1)])
         
@@ -63,7 +76,10 @@ async def create_indexes():
         await db_instance.db.files.create_index("baseName")
         await db_instance.db.files.create_index([("folderId", 1), ("baseName", 1)])
         await db_instance.db.files.create_index([("baseName", 1), ("quality", 1)])
+<<<<<<< HEAD
         await db_instance.db.files.create_index("masterGroupId")
+=======
+>>>>>>> origin/main
         
         print("[DATABASE] Indexes created successfully")
     except Exception as e:
@@ -71,4 +87,8 @@ async def create_indexes():
 
 def get_database():
     """Get database instance"""
+<<<<<<< HEAD
     return db_instance.db
+=======
+    return db_instance.db
+>>>>>>> origin/main

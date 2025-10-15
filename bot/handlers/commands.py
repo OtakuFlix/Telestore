@@ -1,7 +1,11 @@
 from pyrogram import filters
 from pyrogram.types import Message
 from bot.keyboards import main_menu_kb
+<<<<<<< HEAD
 from database.operations import get_stats, create_folder, generate_next_folder_id
+=======
+from database.operations import get_stats, create_folder
+>>>>>>> origin/main
 import secrets
 import string
 
@@ -15,6 +19,7 @@ def register_command_handlers(bot):
     async def start_command(client, message: Message):
         """Handle /start and /menu commands"""
         user = message.from_user
+<<<<<<< HEAD
         
         welcome_text = f"""
 ╔═══════════════════════════╗
@@ -50,6 +55,16 @@ Use the buttons below to get started! 👇
         
         await message.reply_text(
             welcome_text,
+=======
+        await message.reply_text(
+            f"👋 Welcome {user.first_name}!\n\n"
+            f"🎬 **TeleStore Bot** - Your personal cloud storage for videos.\n\n"
+            f"📁 Organize files in folders\n"
+            f"🔗 Get instant streaming links\n"
+            f"⬇️ Direct download support\n"
+            f"🌐 Embed videos anywhere\n\n"
+            f"Use the menu below to get started:",
+>>>>>>> origin/main
             reply_markup=main_menu_kb()
         )
 
@@ -57,6 +72,7 @@ Use the buttons below to get started! 👇
     async def help_command(client, message: Message):
         """Handle /help command"""
         help_text = """
+<<<<<<< HEAD
 📖 **TeleStore Bot - Complete Guide**
 
 **━━━━━━━━━━━━━━━━━━━━**
@@ -112,6 +128,38 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
 **━━━━━━━━━━━━━━━━━━━━**
 
 💬 Need help? Contact support!
+=======
+📖 **How to use TeleStore Bot:**
+
+**Creating Folders:**
+• Use /newfolder <name> to create a folder
+• Or click "New Folder" in the menu
+
+**Adding Files:**
+1. Open any folder
+2. Click "Add Files"
+3. Send me any video/document
+4. Files will be auto-saved with metadata
+
+**Getting Links:**
+• Click on any file to get Watch & Download links
+• Watch link: Streamable in browser
+• Download link: Direct download
+
+**Database Backup/Restore:**
+• Use /vanish to export entire database
+• Use /retrieve to restore from backup JSON
+
+**Managing Content:**
+• Rename folders and files anytime
+• Delete individual files or entire folders
+• All links update automatically
+
+**Supported Formats:**
+MP4, MKV, AVI, MOV, WMV, FLV, and more!
+
+Need help? Contact support.
+>>>>>>> origin/main
         """
         await message.reply_text(help_text, reply_markup=main_menu_kb())
 
@@ -121,12 +169,16 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
         parts = message.text.split(maxsplit=1)
         if len(parts) < 2:
             await message.reply_text(
+<<<<<<< HEAD
                 "❌ **Missing folder name!**\n\n"
                 "**Usage:** `/newfolder <name>`\n\n"
                 "**Examples:**\n"
                 "• `/newfolder My Movies`\n"
                 "• `/newfolder TV Shows 2024`\n"
                 "• `/newfolder Anime Collection`"
+=======
+                "❌ Please provide a folder name.\n\n**Usage:** `/newfolder My Movies`"
+>>>>>>> origin/main
             )
             return
 
@@ -135,11 +187,16 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
             await message.reply_text("❌ Folder name must be at least 2 characters long.")
             return
 
+<<<<<<< HEAD
         folder_id = await generate_next_folder_id()
+=======
+        folder_id = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+>>>>>>> origin/main
 
         await create_folder(folder_id=folder_id, name=folder_name, created_by=message.from_user.id)
 
         await message.reply_text(
+<<<<<<< HEAD
             f"✅ **Folder created successfully!**\n\n"
             f"📁 **Name:** {folder_name}\n"
             f"🆔 **Folder ID:** `{folder_id}`\n"
@@ -150,6 +207,12 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
             f"3. Select quality and upload\n\n"
             f"Or use auto-upload format:\n"
             f"`<{folder_name}><filename><quality><size>`",
+=======
+            f"✅ Folder created successfully!\n\n"
+            f"📁 **Name:** {folder_name}\n"
+            f"🆔 **ID:** `{folder_id}`\n\n"
+            f"Now you can add files to this folder.",
+>>>>>>> origin/main
             reply_markup=main_menu_kb()
         )
 
@@ -157,6 +220,7 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
     async def stats_command(client, message: Message):
         """Handle /stats command"""
         stats = await get_stats(message.from_user.id)
+<<<<<<< HEAD
         
         stats_text = f"""
 📊 **Your Storage Statistics**
@@ -176,6 +240,15 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
         
         await message.reply_text(
             stats_text,
+=======
+        await message.reply_text(
+            f"📊 **Your Statistics:**\n\n"
+            f"📁 Total Folders: {stats['folders']}\n"
+            f"🎬 Total Files: {stats['files']}\n"
+            f"💾 Total Storage: {stats['total_size_mb']:.2f} MB\n"
+            f"🔗 Total Views: {stats.get('views', 0)}\n"
+            f"⬇️ Total Downloads: {stats.get('downloads', 0)}",
+>>>>>>> origin/main
             reply_markup=main_menu_kb()
         )
 
@@ -193,11 +266,15 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
         
         user_id = message.from_user.id
         
+<<<<<<< HEAD
         status_msg = await message.reply_text(
             "🔄 **Exporting database...**\n\n"
             "⏳ This may take a moment...\n"
             "📦 Packaging all your data..."
         )
+=======
+        status_msg = await message.reply_text("🔄 **Exporting database...**\n\nThis may take a moment...")
+>>>>>>> origin/main
         
         try:
             json_file = await export_database()
@@ -208,16 +285,21 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
             
             file_size = os.path.getsize(json_file) / (1024 * 1024)
             
+<<<<<<< HEAD
             await status_msg.edit_text(
                 f"📤 **Uploading backup...**\n\n"
                 f"💾 Size: {file_size:.2f} MB\n"
                 f"📊 Processing complete..."
             )
+=======
+            await status_msg.edit_text(f"📤 **Uploading backup...**\n💾 Size: {file_size:.2f} MB")
+>>>>>>> origin/main
             
             from datetime import datetime
             backup_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
             
             caption = (
+<<<<<<< HEAD
                 f"📦 **Database Backup Export**\n\n"
                 f"📅 **Date:** {backup_time}\n"
                 f"💾 **Size:** {file_size:.2f} MB\n"
@@ -227,6 +309,14 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
                 f"• Don't share with unauthorized users\n"
                 f"• Contains all your folder/file data\n\n"
                 f"🔄 Use `/retrieve` to restore this backup"
+=======
+                f"📦 **Database Backup**\n\n"
+                f"📅 Date: {backup_time}\n"
+                f"💾 Size: {file_size:.2f} MB\n"
+                f"👤 Requested by: {message.from_user.first_name} ({user_id})\n\n"
+                f"⚠️ **Keep this file safe!**\n"
+                f"Use /retrieve to restore this backup"
+>>>>>>> origin/main
             )
             
             if config.CHANNEL_ID:
@@ -242,6 +332,7 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
             await client.send_document(
                 chat_id=message.chat.id,
                 document=json_file,
+<<<<<<< HEAD
                 caption="✅ **Backup created successfully!**\n\n"
                         "📥 **Save this file safely!**\n"
                         "🔒 Keep it in a secure location\n"
@@ -251,6 +342,11 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
                         "• All file metadata\n"
                         "• Quality mappings\n"
                         "• Statistics data"
+=======
+                caption="✅ **Database backup created successfully!**\n\n"
+                        "📥 Keep this file safe in a secure location.\n"
+                        "🔄 Use /retrieve to restore it when needed."
+>>>>>>> origin/main
             )
             
             await status_msg.delete()
@@ -260,11 +356,15 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
             
         except Exception as e:
             print(f"[VANISH] Error: {e}")
+<<<<<<< HEAD
             await status_msg.edit_text(
                 f"❌ **Error creating backup:**\n\n"
                 f"```{str(e)}```\n\n"
                 f"Please try again or contact support."
             )
+=======
+            await status_msg.edit_text(f"❌ Error creating backup:\n`{str(e)}`")
+>>>>>>> origin/main
 
     @bot.on_message(filters.command("retrieve") & filters.private)
     async def retrieve_command(client, message: Message):
@@ -275,6 +375,7 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
         user_waiting_for_json[user_id] = True
         
         await message.reply_text(
+<<<<<<< HEAD
             "📥 **Database Restore Mode Activated**\n\n"
             "**━━━━━━━━━━━━━━━━━━━━**\n\n"
             "Please send me the JSON backup file you want to restore.\n\n"
@@ -287,4 +388,14 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
             "📎 **Send the `.json` file now**\n"
             "🚫 Or use /cancel to abort\n\n"
             "💡 Make sure it's the correct backup file!"
+=======
+            "📥 **Database Restore Mode**\n\n"
+            "Please send me the JSON backup file you want to restore.\n\n"
+            "⚠️ **Important:**\n"
+            "• This will import data into the current database\n"
+            "• Existing data will NOT be deleted\n"
+            "• Duplicate entries will be automatically skipped\n"
+            "• This operation cannot be undone\n\n"
+            "📎 Send the `.json` file now, or use /cancel to abort."
+>>>>>>> origin/main
         )

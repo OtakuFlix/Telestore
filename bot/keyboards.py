@@ -2,6 +2,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 def main_menu_kb():
     return InlineKeyboardMarkup([
+<<<<<<< HEAD
         [
             InlineKeyboardButton("📁 My Folders", callback_data="folders:1"),
             InlineKeyboardButton("➕ New Folder", callback_data="new_folder")
@@ -14,6 +15,12 @@ def main_menu_kb():
             InlineKeyboardButton("ℹ️ Help & Guide", callback_data="help"),
             InlineKeyboardButton("⚙️ Settings", callback_data="settings")
         ],
+=======
+        [InlineKeyboardButton("📁 My Folders", callback_data="folders:1")],
+        [InlineKeyboardButton("➕ New Folder", callback_data="new_folder")],
+        [InlineKeyboardButton("📊 Statistics", callback_data="stats")],
+        [InlineKeyboardButton("ℹ️ Help", callback_data="help")],
+>>>>>>> origin/main
     ])
 
 def folders_kb(folders: list, page: int, total_pages: int):
@@ -36,10 +43,17 @@ def folders_kb(folders: list, page: int, total_pages: int):
     
     nav_buttons = []
     if page > 1:
+<<<<<<< HEAD
         nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"folders:{page-1}"))
     nav_buttons.append(InlineKeyboardButton(f"📄 {page}/{total_pages}", callback_data="noop"))
     if page < total_pages:
         nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"folders:{page+1}"))
+=======
+        nav_buttons.append(InlineKeyboardButton("⬅️", callback_data=f"folders:{page-1}"))
+    nav_buttons.append(InlineKeyboardButton(f"{page}/{total_pages}", callback_data="noop"))
+    if page < total_pages:
+        nav_buttons.append(InlineKeyboardButton("➡️", callback_data=f"folders:{page+1}"))
+>>>>>>> origin/main
     
     if nav_buttons:
         buttons.append(nav_buttons)
@@ -48,6 +62,7 @@ def folders_kb(folders: list, page: int, total_pages: int):
     
     return InlineKeyboardMarkup(buttons)
 
+<<<<<<< HEAD
 def quality_selection_kb(folder_id):
     return InlineKeyboardMarkup([
         [
@@ -63,6 +78,23 @@ def quality_selection_kb(folder_id):
     ])
 
 def quality_folder_view_kb(parent_folder_id, quality_folders: list):
+=======
+def quality_selection_kb(folder_id: str):
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("4K", callback_data=f"select_quality:{folder_id}:4K"),
+            InlineKeyboardButton("1080p", callback_data=f"select_quality:{folder_id}:1080p")
+        ],
+        [
+            InlineKeyboardButton("720p", callback_data=f"select_quality:{folder_id}:720p"),
+            InlineKeyboardButton("480p", callback_data=f"select_quality:{folder_id}:480p")
+        ],
+        [InlineKeyboardButton("360p", callback_data=f"select_quality:{folder_id}:360p")],
+        [InlineKeyboardButton("⬅️ Back", callback_data=f"folder:{folder_id}:1")]
+    ])
+
+def quality_folder_view_kb(parent_folder_id: str, quality_folders: list):
+>>>>>>> origin/main
     buttons = []
     
     for qf in quality_folders:
@@ -75,6 +107,7 @@ def quality_folder_view_kb(parent_folder_id, quality_folders: list):
             )
         ])
     
+<<<<<<< HEAD
     # New buttons for bulk links
     buttons.append([
         InlineKeyboardButton("🔗 All Embed Links", callback_data=f"all_embeds:{parent_folder_id}"),
@@ -86,6 +119,8 @@ def quality_folder_view_kb(parent_folder_id, quality_folders: list):
         InlineKeyboardButton("▶️ All Watch Links", callback_data=f"all_watch:{parent_folder_id}"),
     ])
     
+=======
+>>>>>>> origin/main
     buttons.append([
         InlineKeyboardButton("➕ Add Files", callback_data=f"add_files:{parent_folder_id}"),
         InlineKeyboardButton("✏️ Rename", callback_data=f"rename_folder:{parent_folder_id}")
@@ -97,7 +132,11 @@ def quality_folder_view_kb(parent_folder_id, quality_folders: list):
     
     return InlineKeyboardMarkup(buttons)
 
+<<<<<<< HEAD
 def folder_view_kb(folder_id, files: list, page: int, total_pages: int):
+=======
+def folder_view_kb(folder_id: str, files: list, page: int, total_pages: int):
+>>>>>>> origin/main
     buttons = []
     
     for file in files:
@@ -128,7 +167,11 @@ def folder_view_kb(folder_id, files: list, page: int, total_pages: int):
     
     return InlineKeyboardMarkup(buttons)
 
+<<<<<<< HEAD
 def simplified_file_list_kb(folder_id, file_groups: list):
+=======
+def simplified_file_list_kb(folder_id: str, file_groups: list):
+>>>>>>> origin/main
     buttons = []
     
     for group in file_groups:
@@ -151,7 +194,11 @@ def simplified_file_list_kb(folder_id, file_groups: list):
     
     return InlineKeyboardMarkup(buttons)
 
+<<<<<<< HEAD
 def files_by_basename_kb(folder_id, base_name: str, files: list):
+=======
+def files_by_basename_kb(folder_id: str, base_name: str, files: list):
+>>>>>>> origin/main
     buttons = []
     
     for file in files:
@@ -171,13 +218,21 @@ def files_by_basename_kb(folder_id, base_name: str, files: list):
     
     return InlineKeyboardMarkup(buttons)
 
+<<<<<<< HEAD
 def file_actions_kb(file_id: str, folder_id):
+=======
+def file_actions_kb(file_id: str, folder_id: str):
+>>>>>>> origin/main
     from config import config
     
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("▶️ Watch Online", url=f"{config.BASE_APP_URL}/watch/{file_id}")],
+<<<<<<< HEAD
         [InlineKeyboardButton("⬇️ Download File", url=f"{config.BASE_APP_URL}/dl/{file_id}")],
         [InlineKeyboardButton("📋 Embed Link", url=f"{config.BASE_APP_URL}/{file_id}")],
+=======
+        [InlineKeyboardButton("⬇️ Download", url=f"{config.BASE_APP_URL}/dl/{file_id}")],
+>>>>>>> origin/main
         [
             InlineKeyboardButton("✏️ Rename", callback_data=f"rename_file:{file_id}"),
             InlineKeyboardButton("🗑 Delete", callback_data=f"delete_file:{file_id}:{folder_id}")
@@ -185,7 +240,11 @@ def file_actions_kb(file_id: str, folder_id):
         [InlineKeyboardButton("⬅️ Back to Folder", callback_data=f"quality_folder:{folder_id}:1")]
     ])
 
+<<<<<<< HEAD
 def confirm_delete_kb(item_type: str, item_id: str, folder_id = None):
+=======
+def confirm_delete_kb(item_type: str, item_id: str, folder_id: str = None):
+>>>>>>> origin/main
     if item_type == "file":
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("✅ Yes, Delete", callback_data=f"confirm_delete_file:{item_id}:{folder_id}")],

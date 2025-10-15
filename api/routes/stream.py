@@ -1,9 +1,13 @@
 from fastapi import APIRouter, HTTPException, Request, Query
 from fastapi.responses import StreamingResponse, HTMLResponse
+<<<<<<< HEAD
 from database.operations import (
     get_file_by_id, increment_views, get_files_by_basename,
     get_file_by_master_group_id, get_files_by_master_group_id
 )
+=======
+from database.operations import get_file_by_id, increment_views, get_files_by_basename
+>>>>>>> origin/main
 from bot.client import get_bot
 from config import config
 from pyrogram import raw
@@ -119,14 +123,28 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
                     return [];
                 }}
                 
+<<<<<<< HEAD
                 // Always work with array format
                 let qualitiesArray = Array.isArray(data.qualities) ? data.qualities : 
                     Object.entries(data.qualities).map(([quality, info]) => ({{
+=======
+                // Convert qualities object to array if needed
+                let qualitiesArray = [];
+                if (Array.isArray(data.qualities)) {{
+                    qualitiesArray = data.qualities;
+                }} else {{
+                    // Convert object to array (for master_info format)
+                    qualitiesArray = Object.entries(data.qualities).map(([quality, info]) => ({{
+>>>>>>> origin/main
                         quality: quality,
                         fileId: info.fileId,
                         size: info.size,
                         url: `{config.BASE_APP_URL}/${{info.fileId}}`
                     }}));
+<<<<<<< HEAD
+=======
+                }}
+>>>>>>> origin/main
                 
                 return qualitiesArray;
             }} catch (error) {{
@@ -561,6 +579,25 @@ async def watch_file(fileId: str, request: Request):
                     <i class="fas fa-video"></i>
                     <span>mpv</span>
                 </a>
+<<<<<<< HEAD
+=======
+                <a href="splayer://play?url={stream_url}&title={file_name}" class="player-card">
+                    <i class="fas fa-circle-play"></i>
+                    <span>SPlayer</span>
+                </a>
+                <a href="intent:{stream_url}#Intent;type=video/*;package=com.bsplayer.bspandroid.free;S.title={file_name};end" class="player-card">
+                    <i class="fas fa-square-play"></i>
+                    <span>BSPlayer</span>
+                </a>
+                <a href="nplayer-{stream_url}" class="player-card">
+                    <i class="fas fa-n"></i>
+                    <span>nPlayer</span>
+                </a>
+                <a href="kmplayer://play?url={stream_url}&title={file_name}" class="player-card">
+                    <i class="fas fa-k"></i>
+                    <span>KMPlayer</span>
+                </a>
+>>>>>>> origin/main
             </div>
         </div>
     </div>
@@ -594,6 +631,31 @@ async def watch_file(fileId: str, request: Request):
         
         art.on('ready', () => {{
             console.log('Player ready');
+<<<<<<< HEAD
+=======
+            
+            {f'''if (window.hlsInstance && window.hlsInstance.audioTracks) {{
+                const audioTracks = window.hlsInstance.audioTracks;
+                if (audioTracks.length > 1) {{
+                    const audioOptions = audioTracks.map((track, index) => ({{
+                        html: track.name || `Track ${{index + 1}}` + (track.lang ? ` (${{track.lang.toUpperCase()}})` : ''),
+                        value: index,
+                        default: index === window.hlsInstance.audioTrack
+                    }}));
+                    
+                    art.setting.add({{
+                        html: 'Audio Track',
+                        icon: '<i class="fas fa-music"></i>',
+                        selector: audioOptions,
+                        onSelect: function (item) {{
+                            window.hlsInstance.audioTrack = item.value;
+                            art.notice.show = '<i class="fas fa-music"></i> ' + item.html;
+                            return item.html;
+                        }},
+                    }});
+                }}
+            }}''' if is_mkv else ''}
+>>>>>>> origin/main
         }});
         
         art.on('error', (err) => {{
@@ -635,17 +697,37 @@ async def watch_file(fileId: str, request: Request):
     
     return HTMLResponse(content=html)
 
+<<<<<<< HEAD
 # Master Group Watch Endpoint
 @router.get("/watch/master/{masterGroupId}")
 async def watch_master_group(masterGroupId: str, request: Request, quality: str = Query(default="1080p")):
     """Watch video using master group ID with quality selection"""
+=======
+# NEW: Watch with Master Group ID
+@router.get("/watch/master/{masterGroupId}")
+async def watch_master_group(masterGroupId: str, request: Request, quality: str = Query(default="1080p")):
+    """Watch video using master group ID with quality selection"""
+    from database.connection import get_database
+>>>>>>> origin/main
     
     # Validate master group ID format
     if not re.match(r'^[a-f0-9]{24}$', masterGroupId):
         raise HTTPException(status_code=400, detail="Invalid master group ID format")
     
+<<<<<<< HEAD
     # Get all files with this master group ID
     matched_files = await get_files_by_master_group_id(masterGroupId)
+=======
+    db = get_database()
+    
+    # Find files matching this master group ID
+    all_files = await db.files.find({}).to_list(length=None)
+    
+    # Query directly by parent_master_group_id
+    matched_files = await db.files.find({
+        'parent_master_group_id': masterGroupId
+    }).to_list(length=None)
+>>>>>>> origin/main
     
     if not matched_files:
         raise HTTPException(status_code=404, detail="Master group not found")
@@ -661,7 +743,11 @@ async def watch_master_group(masterGroupId: str, request: Request, quality: str 
         target_file = matched_files[0]
         quality = target_file.get('quality', 'Unknown')
     
+<<<<<<< HEAD
     file_id = target_file['fileId']
+=======
+    file_id = str(target_file['_id'])
+>>>>>>> origin/main
     file_name = target_file.get('fileName', 'Video')
     base_name = target_file.get('baseName', file_name)
     stream_url = f"{config.BASE_APP_URL}/{file_id}"
@@ -748,6 +834,33 @@ async def watch_master_group(masterGroupId: str, request: Request, quality: str 
                     <i class="fas fa-film"></i>
                     <span>MX Player</span>
                 </a>
+<<<<<<< HEAD
+=======
+                <a href="intent:{stream_url}#Intent;package=com.mxtech.videoplayer.pro;S.title={file_name};end" class="player-card">
+                    <i class="fas fa-star"></i>
+                    <span>MX Player Pro</span>
+                </a>
+                <a href="intent:{stream_url}#Intent;type=video/*;package=is.xyz.mpv;end" class="player-card">
+                    <i class="fas fa-video"></i>
+                    <span>mpv</span>
+                </a>
+                <a href="splayer://play?url={stream_url}&title={file_name}" class="player-card">
+                    <i class="fas fa-circle-play"></i>
+                    <span>SPlayer</span>
+                </a>
+                <a href="intent:{stream_url}#Intent;type=video/*;package=com.bsplayer.bspandroid.free;S.title={file_name};end" class="player-card">
+                    <i class="fas fa-square-play"></i>
+                    <span>BSPlayer</span>
+                </a>
+                <a href="nplayer-{stream_url}" class="player-card">
+                    <i class="fas fa-n"></i>
+                    <span>nPlayer</span>
+                </a>
+                <a href="kmplayer://play?url={stream_url}&title={file_name}" class="player-card">
+                    <i class="fas fa-k"></i>
+                    <span>KMPlayer</span>
+                </a>
+>>>>>>> origin/main
             </div>
         </div>
     </div>
@@ -781,6 +894,52 @@ async def watch_master_group(masterGroupId: str, request: Request, quality: str 
         
         art.on('ready', () => {{
             console.log('Player ready with master group support');
+<<<<<<< HEAD
+=======
+            
+            {f'''if (window.hlsInstance && window.hlsInstance.audioTracks) {{
+                const audioTracks = window.hlsInstance.audioTracks;
+                if (audioTracks.length > 1) {{
+                    const audioOptions = audioTracks.map((track, index) => ({{
+                        html: track.name || `Track ${{index + 1}}` + (track.lang ? ` (${{track.lang.toUpperCase()}})` : ''),
+                        value: index,
+                        default: index === window.hlsInstance.audioTrack
+                    }}));
+                    
+                    art.setting.add({{
+                        html: 'Audio Track',
+                        icon: '<i class="fas fa-music"></i>',
+                        selector: audioOptions,
+                        onSelect: function (item) {{
+                            window.hlsInstance.audioTrack = item.value;
+                            art.notice.show = '<i class="fas fa-music"></i> ' + item.html;
+                            return item.html;
+                        }},
+                    }});
+                }}
+            }}''' if is_mkv else ''}
+        }});
+        
+        art.on('error', (err) => {{
+            console.error('Playback error:', err);
+            art.notice.show = '<i class="fas fa-exclamation-triangle"></i> Playback error';
+        }});
+        
+        art.on('video:timeupdate', () => {{
+            if (art.duration - art.currentTime < 1) {{
+                localStorage.removeItem('playback_{masterGroupId}');
+            }} else {{
+                localStorage.setItem('playback_{masterGroupId}', art.currentTime);
+            }}
+        }});
+        
+        art.on('ready', () => {{
+            const savedTime = localStorage.getItem('playback_{masterGroupId}');
+            if (savedTime && parseFloat(savedTime) > 10) {{
+                art.currentTime = parseFloat(savedTime);
+                art.notice.show = '<i class="fas fa-play"></i> Resumed from ' + Math.floor(savedTime) + 's';
+            }}
+>>>>>>> origin/main
         }});
         
         function copyLink() {{
@@ -801,6 +960,7 @@ async def watch_master_group(masterGroupId: str, request: Request, quality: str 
     
     return HTMLResponse(content=html)
 
+<<<<<<< HEAD
 @router.get("/embed/{masterGroupId}")
 async def embed_master_group(masterGroupId: str, request: Request, quality: str = Query(default="1080p")):
     """Embed video using master group ID"""
@@ -810,6 +970,107 @@ async def embed_master_group(masterGroupId: str, request: Request, quality: str 
     
     matched_files = await get_files_by_master_group_id(masterGroupId)
     
+=======
+@router.get("/embed/{fileId}")
+async def embed_file(fileId: str, request: Request):
+    if not re.match(r'^[a-f0-9]{24}$', fileId):
+        raise HTTPException(status_code=400, detail="Invalid file ID")
+
+    file_data = await get_file_by_id(fileId)
+    if not file_data:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    file_name = file_data.get('fileName', 'Video')
+    stream_url = f"{config.BASE_APP_URL}/{fileId}"
+    download_url = f"{config.BASE_APP_URL}/dl/{fileId}"
+    quality = file_data.get('quality', 'Unknown')
+    is_mkv = file_name.lower().endswith('.mkv')
+
+    artplayer_config = get_artplayer_config_with_quality(
+        fileId, stream_url, file_name, is_mkv, download_url, quality,
+        is_master_mode=False, master_group_id=None
+    )
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{file_name}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html, body {{
+            margin: 0;
+            padding: 0;
+            background: #000;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }}
+        #artplayer {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }}
+    </style>
+</head>
+<body>
+    <div id="artplayer"></div>
+    <script src="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        {artplayer_config}
+        
+        art.on('ready', () => {{
+            console.log('Embed player ready');
+            
+            {f'''if (window.hlsInstance && window.hlsInstance.audioTracks && window.hlsInstance.audioTracks.length > 1) {{
+                const audioOptions = window.hlsInstance.audioTracks.map((track, index) => ({{
+                    html: track.name || `Audio ${{index + 1}}` + (track.lang ? ` (${{track.lang}})` : ''),
+                    value: index,
+                    default: index === window.hlsInstance.audioTrack
+                }}));
+                
+                art.setting.add({{
+                    html: 'Audio Track',
+                    icon: '<i class="fas fa-music"></i>',
+                    selector: audioOptions,
+                    onSelect: function (item) {{
+                        window.hlsInstance.audioTrack = item.value;
+                        art.notice.show = '<i class="fas fa-music"></i> ' + item.html;
+                        return item.html;
+                    }},
+                }});
+            }}''' if is_mkv else ''}
+        }});
+    </script>
+</body>
+</html>"""
+    
+    return HTMLResponse(content=html)
+
+# NEW: Embed with Master Group ID
+@router.get("/embed/master/{masterGroupId}")
+async def embed_master_group(masterGroupId: str, request: Request, quality: str = Query(default="1080p")):
+    """Embed video using master group ID with quality selection"""
+    from database.connection import get_database
+    
+    if not re.match(r'^[a-f0-9]{24}$', masterGroupId):
+        raise HTTPException(status_code=400, detail="Invalid master group ID format")
+
+    db = get_database()
+    
+    all_files = await db.files.find({}).to_list(length=None)
+    
+    # Query directly by parent_master_group_id
+    matched_files = await db.files.find({
+        'parent_master_group_id': masterGroupId
+    }).to_list(length=None)
+        
+>>>>>>> origin/main
     if not matched_files:
         raise HTTPException(status_code=404, detail="Master group not found")
     
@@ -823,7 +1084,11 @@ async def embed_master_group(masterGroupId: str, request: Request, quality: str 
         target_file = matched_files[0]
         quality = target_file.get('quality', 'Unknown')
     
+<<<<<<< HEAD
     file_id = target_file['fileId']
+=======
+    file_id = str(target_file['_id'])
+>>>>>>> origin/main
     file_name = target_file.get('fileName', 'Video')
     stream_url = f"{config.BASE_APP_URL}/{file_id}"
     download_url = f"{config.BASE_APP_URL}/dl/{file_id}"
@@ -871,6 +1136,28 @@ async def embed_master_group(masterGroupId: str, request: Request, quality: str 
         
         art.on('ready', () => {{
             console.log('Embed player ready with master group support');
+<<<<<<< HEAD
+=======
+            
+            {f'''if (window.hlsInstance && window.hlsInstance.audioTracks && window.hlsInstance.audioTracks.length > 1) {{
+                const audioOptions = window.hlsInstance.audioTracks.map((track, index) => ({{
+                    html: track.name || `Audio ${{index + 1}}` + (track.lang ? ` (${{track.lang}})` : ''),
+                    value: index,
+                    default: index === window.hlsInstance.audioTrack
+                }}));
+                
+                art.setting.add({{
+                    html: 'Audio Track',
+                    icon: '<i class="fas fa-music"></i>',
+                    selector: audioOptions,
+                    onSelect: function (item) {{
+                        window.hlsInstance.audioTrack = item.value;
+                        art.notice.show = '<i class="fas fa-music"></i> ' + item.html;
+                        return item.html;
+                    }},
+                }});
+            }}''' if is_mkv else ''}
+>>>>>>> origin/main
         }});
     </script>
 </body>

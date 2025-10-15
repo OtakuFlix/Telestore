@@ -9,6 +9,7 @@ import string
 import re
 import os
 
+<<<<<<< HEAD
 async def generate_next_folder_id() -> int:
     """Generate next sequential folder ID"""
     db = get_database()
@@ -26,6 +27,10 @@ async def generate_next_folder_id() -> int:
             pass
     
     return 1
+=======
+def generate_folder_id(length=12):
+    return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(length))
+>>>>>>> origin/main
 
 def parse_caption_format(caption: str) -> Dict:
     pattern = r'<([^>]+)><([^>]+)><([^>]+)><([^>]+)>'
@@ -51,7 +56,11 @@ def generate_master_group_id(folder_id: str, base_name: str) -> str:
     combined = f"{folder_id}:{base_name}"
     return hashlib.md5(combined.encode()).hexdigest()[:24]
 
+<<<<<<< HEAD
 async def create_folder(folder_id: int, name: str, created_by: int, parent_folder_id: Optional[int] = None, is_quality_folder: bool = False, quality: Optional[str] = None):
+=======
+async def create_folder(folder_id: str, name: str, created_by: int, parent_folder_id: Optional[str] = None, is_quality_folder: bool = False, quality: Optional[str] = None):
+>>>>>>> origin/main
     db = get_database()
     folder = {
         'folderId': folder_id,
@@ -82,6 +91,7 @@ async def create_folder(folder_id: int, name: str, created_by: int, parent_folde
     
     return result.inserted_id is not None
 
+<<<<<<< HEAD
 async def get_folder_by_id(folder_id):
     """Get folder by ID (supports both int and str)"""
     db = get_database()
@@ -103,6 +113,15 @@ async def get_or_create_quality_folder(parent_folder_id, quality: str, created_b
     except (ValueError, TypeError):
         pass
     
+=======
+async def get_folder_by_id(folder_id: str):
+    db = get_database()
+    return await db.folders.find_one({'folderId': folder_id})
+
+async def get_or_create_quality_folder(parent_folder_id: str, quality: str, created_by: int):
+    db = get_database()
+    
+>>>>>>> origin/main
     quality_folder = await db.folders.find_one({
         'parentFolderId': parent_folder_id,
         'isQualityFolder': True,
@@ -112,7 +131,11 @@ async def get_or_create_quality_folder(parent_folder_id, quality: str, created_b
     if quality_folder:
         return quality_folder['folderId']
     
+<<<<<<< HEAD
     quality_folder_id = await generate_next_folder_id()
+=======
+    quality_folder_id = generate_folder_id()
+>>>>>>> origin/main
     await create_folder(
         folder_id=quality_folder_id,
         name=quality,
@@ -124,7 +147,11 @@ async def get_or_create_quality_folder(parent_folder_id, quality: str, created_b
     
     return quality_folder_id
 
+<<<<<<< HEAD
 async def get_or_create_folder_by_name(folder_name: str, created_by: int, parent_folder_id: Optional[int] = None):
+=======
+async def get_or_create_folder_by_name(folder_name: str, created_by: int, parent_folder_id: Optional[str] = None):
+>>>>>>> origin/main
     db = get_database()
     
     query = {
@@ -143,7 +170,11 @@ async def get_or_create_folder_by_name(folder_name: str, created_by: int, parent
     if folder:
         return folder['folderId']
     
+<<<<<<< HEAD
     folder_id = await generate_next_folder_id()
+=======
+    folder_id = generate_folder_id()
+>>>>>>> origin/main
     await create_folder(
         folder_id=folder_id,
         name=folder_name,
@@ -153,7 +184,11 @@ async def get_or_create_folder_by_name(folder_name: str, created_by: int, parent
     
     return folder_id
 
+<<<<<<< HEAD
 async def get_user_folders(user_id: int, page: int = 1, page_size: int = 10, parent_id: Optional[int] = None):
+=======
+async def get_user_folders(user_id: int, page: int = 1, page_size: int = 10, parent_id: Optional[str] = None):
+>>>>>>> origin/main
     db = get_database()
     skip = (page - 1) * page_size
     
@@ -172,6 +207,7 @@ async def get_user_folders(user_id: int, page: int = 1, page_size: int = 10, par
     
     return folders
 
+<<<<<<< HEAD
 async def get_quality_folders(parent_folder_id):
     db = get_database()
     
@@ -180,13 +216,21 @@ async def get_quality_folders(parent_folder_id):
     except (ValueError, TypeError):
         pass
     
+=======
+async def get_quality_folders(parent_folder_id: str):
+    db = get_database()
+>>>>>>> origin/main
     cursor = db.folders.find({
         'parentFolderId': parent_folder_id,
         'isQualityFolder': True
     }).sort('quality', 1)
     return await cursor.to_list(length=10)
 
+<<<<<<< HEAD
 async def count_user_folders(user_id: int, parent_id: Optional[int] = None):
+=======
+async def count_user_folders(user_id: int, parent_id: Optional[str] = None):
+>>>>>>> origin/main
     db = get_database()
     query = {'createdBy': user_id, 'isQualityFolder': False}
     if parent_id:
@@ -195,6 +239,7 @@ async def count_user_folders(user_id: int, parent_id: Optional[int] = None):
         query['parentFolderId'] = None
     return await db.folders.count_documents(query)
 
+<<<<<<< HEAD
 async def count_subfolders(folder_id):
     db = get_database()
     try:
@@ -210,6 +255,14 @@ async def update_folder(folder_id, update_data: dict):
     except (ValueError, TypeError):
         pass
     
+=======
+async def count_subfolders(folder_id: str):
+    db = get_database()
+    return await db.folders.count_documents({'parentFolderId': folder_id})
+
+async def update_folder(folder_id: str, update_data: dict):
+    db = get_database()
+>>>>>>> origin/main
     update_data['updatedAt'] = datetime.utcnow()
     result = await db.folders.update_one(
         {'folderId': folder_id},
@@ -224,6 +277,7 @@ async def update_folder(folder_id, update_data: dict):
     
     return result.modified_count > 0
 
+<<<<<<< HEAD
 async def delete_folder(folder_id, user_id: int):
     db = get_database()
     
@@ -232,6 +286,11 @@ async def delete_folder(folder_id, user_id: int):
     except (ValueError, TypeError):
         pass
     
+=======
+async def delete_folder(folder_id: str, user_id: int):
+    db = get_database()
+    
+>>>>>>> origin/main
     folder = await db.folders.find_one({'folderId': folder_id, 'createdBy': user_id})
     if not folder:
         return False
@@ -281,7 +340,11 @@ async def add_file_to_folder(file_data: dict, uploaded_by: int):
     folder_id = file_data.get('folderId')
     base_name = file_data.get('baseName')
     if folder_id and base_name:
+<<<<<<< HEAD
         file_data['masterGroupId'] = generate_master_group_id(str(folder_id), base_name)
+=======
+        file_data['master_group_id'] = generate_master_group_id(folder_id, base_name)
+>>>>>>> origin/main
     
     existing = await db.files.find_one({
         'telegramFileUniqueId': file_data.get('telegramFileUniqueId'),
@@ -290,7 +353,10 @@ async def add_file_to_folder(file_data: dict, uploaded_by: int):
     if existing:
         return {
             'documentId': str(existing['_id']),
+<<<<<<< HEAD
             'masterGroupId': existing.get('masterGroupId'),
+=======
+>>>>>>> origin/main
             'inserted': False
         }
     
@@ -307,13 +373,19 @@ async def add_file_to_folder(file_data: dict, uploaded_by: int):
             'folderId': file_data['folderId'],
             'fileName': file_data.get('fileName'),
             'quality': file_data.get('quality'),
+<<<<<<< HEAD
             'masterGroupId': file_data.get('masterGroupId'),
+=======
+>>>>>>> origin/main
             'uploadedBy': uploaded_by
         })
     
     return {
         'documentId': str(result.inserted_id),
+<<<<<<< HEAD
         'masterGroupId': file_data.get('masterGroupId'),
+=======
+>>>>>>> origin/main
         'inserted': True
     }
 
@@ -324,6 +396,7 @@ async def get_file_by_id(file_id: str):
     except InvalidId:
         return None
 
+<<<<<<< HEAD
 async def get_file_by_master_group_id(master_group_id: str, quality: str = None):
     """Get file by master group ID and optional quality"""
     db = get_database()
@@ -353,6 +426,10 @@ async def get_folder_files(folder_id, page: int = 1, page_size: int = 10):
     except (ValueError, TypeError):
         pass
     
+=======
+async def get_folder_files(folder_id: str, page: int = 1, page_size: int = 10):
+    db = get_database()
+>>>>>>> origin/main
     skip = (page - 1) * page_size
     
     cursor = db.files.find({'folderId': folder_id}).sort('uploadedAt', -1).skip(skip).limit(page_size)
@@ -363,6 +440,7 @@ async def get_folder_files(folder_id, page: int = 1, page_size: int = 10):
     
     return files
 
+<<<<<<< HEAD
 async def get_all_folder_files(folder_id) -> List[Dict]:
     """Get all files in a folder (no pagination)"""
     db = get_database()
@@ -386,6 +464,10 @@ async def get_files_by_basename(folder_id, base_name: str):
     except (ValueError, TypeError):
         pass
     
+=======
+async def get_files_by_basename(folder_id: str, base_name: str):
+    db = get_database()
+>>>>>>> origin/main
     cursor = db.files.find({
         'folderId': folder_id,
         'baseName': base_name
@@ -397,12 +479,17 @@ async def get_files_by_basename(folder_id, base_name: str):
     
     return files
 
+<<<<<<< HEAD
 async def get_simplified_file_list(folder_id):
     db = get_database()
     try:
         folder_id = int(folder_id)
     except (ValueError, TypeError):
         pass
+=======
+async def get_simplified_file_list(folder_id: str):
+    db = get_database()
+>>>>>>> origin/main
     
     pipeline = [
         {'$match': {'folderId': folder_id}},
@@ -425,12 +512,17 @@ async def get_simplified_file_list(folder_id):
     cursor = db.files.aggregate(pipeline)
     return await cursor.to_list(length=None)
 
+<<<<<<< HEAD
 async def count_folder_files(folder_id):
     db = get_database()
     try:
         folder_id = int(folder_id)
     except (ValueError, TypeError):
         pass
+=======
+async def count_folder_files(folder_id: str):
+    db = get_database()
+>>>>>>> origin/main
     return await db.files.count_documents({'folderId': folder_id})
 
 async def update_file(file_id: str, update_data: dict):
